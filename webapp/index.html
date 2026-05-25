@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Logistradar</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#F2F2F7;--surface:#fff;--dark:#111827;--dark2:#1F2937;
+  --primary:#2563EB;--primary-bg:#EFF6FF;--primary-bd:#BFDBFE;
+  --success:#22C55E;--success-bg:#F0FDF4;
+  --danger:#EF4444;--danger-bg:#FEF2F2;
+  --amber:#F97316;--amber-bg:#FFF7ED;
+  --border:#E5E7EB;--sep:#F3F4F6;
+  --text-1:#111827;--text-2:#374151;--text-3:#6B7280;--text-4:#9CA3AF;
+  --nav-h:60px;--nav-bot:10px;--nav-side:14px;
+  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;--r-2xl:24px;
+  --sh-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:0 4px 12px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.04);
+  --sh-lg:0 10px 28px rgba(0,0,0,.1),0 4px 8px rgba(0,0,0,.05);
+}
+html,body{height:100%;background:var(--bg);overflow:hidden}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--text-1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+#root{position:fixed;inset:0;max-width:430px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+
+/* SCREENS */
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;display:none;flex-direction:column;padding-bottom:calc(var(--nav-h) + var(--nav-bot) + 14px)}
+.screen::-webkit-scrollbar{display:none}
+.screen.active{display:flex;animation:sIn .32s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes sIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* DARK PILL NAV */
+.bottom-nav{position:fixed;bottom:var(--nav-bot);left:var(--nav-side);right:var(--nav-side);height:var(--nav-h);background:var(--dark);border-radius:20px;display:grid;grid-template-columns:repeat(4,1fr);z-index:50;box-shadow:0 8px 32px rgba(0,0,0,.3),0 2px 8px rgba(0,0,0,.15);overflow:hidden}
+.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;cursor:pointer;color:rgba(255,255,255,.38);font-size:10px;font-weight:600;font-family:inherit;padding:8px 4px 6px;position:relative;transition:color .15s,transform .2s cubic-bezier(.34,1.56,.64,1)}
+.nav-item:active{transform:scale(.82)}
+.nav-item.active{color:#fff}
+.nav-item.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:3px;background:#fff;border-radius:0 0 3px 3px;opacity:.55}
+.nav-icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-badge{position:absolute;top:6px;right:calc(50% - 19px);min-width:16px;height:16px;border-radius:8px;background:#EF4444;color:#fff;font-size:9px;font-weight:700;border:2px solid var(--dark);display:none;align-items:center;justify-content:center}
+.nav-badge.visible{display:flex}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;border-radius:var(--r-md);padding:12px 16px;transition:transform .2s cubic-bezier(.34,1.56,.64,1),opacity .12s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+.btn:active{transform:scale(.93);opacity:.88}
+.btn-dark{background:var(--dark);color:#fff}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25)}
+.btn-success{background:var(--success);color:#fff}
+.btn-ghost-danger{background:var(--danger-bg);color:var(--danger);border:1px solid #FECACA}
+.btn-outline{background:transparent;color:var(--text-2);border:1.5px solid var(--border)}
+.btn-sm{font-size:12px;padding:8px 12px;border-radius:var(--r-sm)}
+.btn-block{width:100%}
+.btn-lg{padding:15px 20px;font-size:15px;font-weight:700;border-radius:var(--r-lg)}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap}
+.tag-neutral{background:var(--sep);color:var(--text-2)}
+.tag-primary{background:var(--primary-bg);color:var(--primary)}
+.tag-success{background:var(--success-bg);color:#16A34A}
+.tag-amber{background:var(--amber-bg);color:#EA580C}
+.tag-danger{background:var(--danger-bg);color:var(--danger)}
+
+/* INPUTS */
+.input{width:100%;background:var(--sep);border:1.5px solid transparent;border-radius:var(--r-md);padding:13px 14px 13px 40px;font-family:inherit;font-size:14px;font-weight:500;color:var(--text-1);outline:none;transition:border-color .2s,box-shadow .25s cubic-bezier(.22,1,.36,1),background .15s;-webkit-appearance:none}
+.input:focus{background:var(--surface);border-color:var(--primary);box-shadow:0 0 0 4px rgba(37,99,235,.1)}
+.input::placeholder{color:var(--text-4);font-weight:400}
+.input-wrap{position:relative}
+.input-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;pointer-events:none;color:var(--text-4);stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.field-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:8px}
+
+/* AUTOCOMPLETE — not used for search form anymore, kept for legacy */
+.autocomplete-list{display:none}
+.autocomplete-item{display:flex;align-items:center;gap:10px;padding:12px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--sep);user-select:none}
+.autocomplete-item:last-child{border-bottom:none}
+.autocomplete-item:active{background:var(--primary-bg)}
+
+/* ══ HERO CARD ══ */
+.hero-card{background:var(--dark);margin:12px 12px 0;border-radius:var(--r-2xl);padding:18px 18px 20px;flex-shrink:0;position:relative;overflow:hidden}
+.hero-card::before{content:'';position:absolute;top:-60px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none}
+.hero-card::after{content:'';position:absolute;bottom:-50px;left:-30px;width:140px;height:140px;border-radius:50%;background:rgba(37,99,235,.18);pointer-events:none}
+.hero-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;position:relative;z-index:1}
+.hero-logo{display:flex;align-items:center;gap:10px}
+.hero-icon{width:40px;height:40px;border-radius:12px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 14px rgba(37,99,235,.45)}
+.hero-brand{font-size:19px;font-weight:800;color:#fff;letter-spacing:-.4px}
+.hero-tagline{font-size:11px;color:rgba(255,255,255,.45);font-weight:500;margin-top:1px}
+.hero-status{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;color:rgba(255,255,255,.85)}
+.hero-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.4)}50%{box-shadow:0 0 0 5px rgba(74,222,128,.0)}}
+.hero-stats{display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;background:rgba(255,255,255,.07);border-radius:var(--r-lg);padding:13px 0;margin-bottom:14px;position:relative;z-index:1}
+.hero-stat{text-align:center}
+.hero-stat-num{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.4px}
+.hero-stat-lbl{font-size:10px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.hero-stat-sep{background:rgba(255,255,255,.12)}
+.hero-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative;z-index:1}
+.hero-btn{display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:var(--r-md);padding:11px 12px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#fff;transition:all .2s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent}
+.hero-btn:active{transform:scale(.92);background:rgba(255,255,255,.18)}
+.hero-btn.accent{background:var(--primary);border-color:var(--primary);box-shadow:0 3px 12px rgba(37,99,235,.4)}
+
+/* ══ SEARCH FORM ══ */
+.search-form{background:var(--surface);margin:10px 12px 0;border-radius:var(--r-xl);padding:14px;box-shadow:0 4px 16px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.05);flex-shrink:0;border:1px solid rgba(0,0,0,.04)}
+
+/* Search route card (new clean design) */
+.search-route-card{background:var(--sep);border-radius:var(--r-lg);margin-bottom:10px;overflow:hidden}
+.src-row{display:flex;align-items:center;gap:12px;padding:12px 12px;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;transition:background .1s}
+.src-row:active{background:rgba(0,0,0,.04)}
+.src-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.src-dot-blue{background:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+.src-dot-red{background:var(--danger);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.src-texts{flex:1;min-width:0}
+.src-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-4);margin-bottom:2px}
+.src-val{font-size:15px;font-weight:700;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src-val.empty{font-size:14px;font-weight:400;color:var(--text-4)}
+.src-clear{width:22px;height:22px;border-radius:50%;border:none;background:var(--text-4);cursor:pointer;display:none;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;flex-shrink:0;transition:transform .15s;opacity:.7;-webkit-tap-highlight-color:transparent}
+.src-clear:active{transform:scale(.82)}
+.src-clear.show{display:flex}
+.src-sep{display:flex;align-items:center;padding:0 12px;gap:0;position:relative;height:1px}
+.src-sep-line{flex:1;height:1px;background:var(--border)}
+.src-swap{position:absolute;right:12px;width:28px;height:28px;border-radius:50%;background:var(--dark);border:none;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .28s cubic-bezier(.34,1.56,.64,1);z-index:2;-webkit-tap-highlight-color:transparent}
+.src-swap:active{transform:rotate(180deg) scale(.88)}
+
+/* Route pair with clear buttons */
+.route-pair{background:var(--sep);border-radius:var(--r-md);border:1.5px solid var(--border);overflow:visible;margin-bottom:10px;display:flex;position:relative}
+.route-pair-field{flex:1;position:relative;display:flex;flex-direction:column;min-width:0}
+.route-pair-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-4);padding:9px 26px 0 36px}
+.route-pair-input{width:100%;background:transparent;border:none;outline:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text-1);padding:2px 10px 10px 36px;min-width:0}
+.route-pair-input::placeholder{color:var(--text-4);font-weight:400}
+.rp-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;pointer-events:none}
+/* clear X button — top-right corner of label zone, far from swap btn */
+.rp-clear{
+  position:absolute;right:6px;top:6px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--text-4);
+  border:none;cursor:pointer;display:none;
+  align-items:center;justify-content:center;
+  color:#fff;font-size:10px;font-weight:800;line-height:1;
+  transition:transform .15s cubic-bezier(.34,1.56,.64,1),opacity .12s;
+  flex-shrink:0;opacity:.75;
+}
+.rp-clear:active{transform:scale(.8)}
+.rp-clear.show{display:flex}
+.route-pair-div{width:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative}
+.route-pair-div::before{content:'';position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--border)}
+.route-swap-btn{position:relative;z-index:5;width:30px;height:30px;border-radius:50%;background:var(--dark);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.25);transition:transform .28s cubic-bezier(.34,1.56,.64,1)}
+.route-swap-btn:active{transform:rotate(180deg) scale(.88)}
+
+/* Truck chips */
+.truck-chips-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}
+.truck-chips-row::-webkit-scrollbar{display:none}
+.truck-chip{flex-shrink:0;padding:6px 13px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;transition:all .2s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;user-select:none}
+.truck-chip:active{transform:scale(.9)}
+.truck-chip.sel{background:var(--dark);border-color:var(--dark);color:#fff}
+
+/* Direction chips */
+.route-chips{padding:12px 12px 6px;flex-shrink:0}
+.chips-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:9px}
+.chips-scroll{display:flex;gap:6px;overflow-x:auto}
+.chips-scroll::-webkit-scrollbar{display:none}
+.chip{display:flex;align-items:center;gap:5px;flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-2);transition:all .2s cubic-bezier(.34,1.56,.64,1);box-shadow:var(--sh-sm);user-select:none}
+.chip:active{transform:scale(.9)}
+.chip.selected{background:var(--dark);border-color:var(--dark);color:#fff}
+
+/* Results */
+.results-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 6px;flex-shrink:0}
+.results-count{font-size:13px;font-weight:500;color:var(--text-3)}
+.results-count strong{color:var(--text-1);font-weight:700}
+.sort-toggle{font-size:12px;font-weight:600;color:var(--text-2);background:var(--surface);border:1.5px solid var(--border);cursor:pointer;font-family:inherit;padding:5px 11px;border-radius:20px;transition:transform .15s}
+.sort-toggle:active{transform:scale(.93)}
+.results-list{padding:0 12px;display:flex;flex-direction:column;gap:8px}
+
+/* RESULT CARD */
+.result-card{background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--sh-sm);border:1px solid rgba(0,0,0,.05);overflow:hidden;animation:cIn .35s cubic-bezier(.22,1,.36,1) both}
+.result-card:nth-child(1){animation-delay:.03s}.result-card:nth-child(2){animation-delay:.07s}
+.result-card:nth-child(3){animation-delay:.11s}.result-card:nth-child(4){animation-delay:.15s}
+.result-card:nth-child(n+5){animation-delay:.18s}
+@keyframes cIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.rc-body{padding:14px 14px 12px}
+.rc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.rc-route{font-size:16px;font-weight:800;letter-spacing:-.3px;line-height:1.2;flex:1}
+.rc-arrow{color:var(--text-4);font-weight:400;margin:0 5px;font-size:14px}
+.rc-live{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--success-bg);color:#16A34A;flex-shrink:0;margin-left:8px;margin-top:3px}
+.rc-meta{display:flex;gap:6px;flex-wrap:wrap}
+.rc-bottom{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--sep)}
+.rc-price{font-size:18px;font-weight:800;color:var(--text-1);letter-spacing:-.3px}
+.rc-time{font-size:11px;color:var(--text-3);font-weight:500;margin-top:1px}
+.rc-btns{display:flex;gap:7px}
+.rc-call{display:flex;align-items:center;gap:5px;background:var(--dark);color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.rc-call:active{transform:scale(.91)}
+.rc-detail{display:flex;align-items:center;justify-content:center;background:var(--sep);color:var(--text-2);border:none;border-radius:10px;width:38px;height:38px;cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.rc-detail:active{transform:scale(.91);background:var(--border)}
+
+.load-more-btn{margin:6px 12px 0;display:none;width:calc(100% - 24px);padding:13px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-lg);font-family:inherit;font-size:14px;font-weight:600;color:var(--text-2);cursor:pointer;transition:transform .18s cubic-bezier(.34,1.56,.64,1)}
+.load-more-btn:active{transform:scale(.97)}
+
+/* ══ POST SCREEN ══ */
+.post-header{background:var(--surface);padding:18px 16px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.post-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.post-step-counter{font-size:13px;font-weight:700;color:var(--text-3);background:var(--sep);padding:4px 10px;border-radius:20px}
+.progress-bar{display:flex;align-items:center;gap:5px}
+.progress-dot{height:5px;border-radius:3px;background:var(--border);transition:all .35s cubic-bezier(.34,1.56,.64,1);flex:1}
+.progress-dot.current{background:var(--dark)}
+.progress-dot.done{background:var(--success)}
+
+.step-body{display:none;flex-direction:column;flex:1;padding:28px 16px 20px}
+.step-body.active{display:flex;animation:sIn .28s cubic-bezier(.22,1,.36,1)}
+.step-number{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-4);margin-bottom:10px}
+.step-question{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.2;margin-bottom:6px}
+.step-hint{font-size:14px;color:var(--text-3);font-weight:500;margin-bottom:24px}
+.step-spacer{flex:1;min-height:20px}
+
+/* Step input wrapper (no-icon variant) */
+.step-input-group{background:var(--sep);border-radius:var(--r-lg);padding:16px;margin-bottom:12px}
+.step-input-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-4);margin-bottom:8px}
+.step-input{width:100%;background:transparent;border:none;outline:none;font-family:inherit;font-size:20px;font-weight:700;color:var(--text-1);padding:0}
+.step-input::placeholder{color:var(--text-4);font-weight:400;font-size:16px}
+
+/* Step location card (like route-pair) */
+.step-loc-card{background:var(--dark);border-radius:var(--r-xl);padding:4px 0;margin-bottom:12px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.step-loc-row{display:flex;align-items:center;padding:0 16px;position:relative;cursor:pointer;transition:background .15s;-webkit-tap-highlight-color:transparent}
+.step-loc-row:active{background:rgba(255,255,255,.06)}
+.step-loc-sep{height:1px;background:rgba(255,255,255,.1);margin:0 16px}
+.step-loc-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin:12px 12px 12px 0}
+.step-loc-icon.from{background:rgba(37,99,235,.35)}
+.step-loc-icon.to{background:rgba(34,197,94,.25)}
+.step-loc-texts{flex:1;padding:14px 0;min-width:0}
+.step-loc-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.38)}
+.step-loc-val{font-size:16px;font-weight:700;color:#fff;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step-loc-val.empty{font-size:14px;font-weight:400;color:rgba(255,255,255,.35)}
+.step-loc-arrow{color:rgba(255,255,255,.3);font-size:16px;flex-shrink:0;margin-left:8px}
+
+/* City picker sheet */
+.city-picker-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:430px;background:var(--surface);border-radius:24px 24px 0 0;z-index:200;max-height:82dvh;display:flex;flex-direction:column;transition:transform .35s cubic-bezier(.22,1,.36,1);box-shadow:0 -12px 40px rgba(0,0,0,.2)}
+.city-picker-sheet.open{transform:translateX(-50%) translateY(0)}
+.city-picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;display:none;backdrop-filter:blur(3px)}
+.city-picker-overlay.open{display:block;animation:fIn .2s ease}
+.cp-drag{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0}
+.cp-header{padding:12px 16px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.cp-title{font-size:16px;font-weight:800;flex:1}
+.cp-close{width:30px;height:30px;border-radius:50%;border:none;background:var(--sep);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-family:inherit}
+.cp-search{margin:10px 16px;position:relative}
+.cp-search-inp{width:100%;background:var(--sep);border:1.5px solid transparent;border-radius:var(--r-md);padding:12px 14px 12px 40px;font-family:inherit;font-size:14px;font-weight:500;color:var(--text-1);outline:none;transition:border-color .2s,box-shadow .25s}
+.cp-search-inp:focus{background:var(--surface);border-color:var(--primary);box-shadow:0 0 0 4px rgba(37,99,235,.1)}
+.cp-search-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-4);pointer-events:none}
+.cp-list{flex:1;overflow-y:auto;padding:4px 0 24px}
+.cp-list::-webkit-scrollbar{display:none}
+.cp-item{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--sep);transition:background .1s;-webkit-tap-highlight-color:transparent}
+.cp-item:last-child{border-bottom:none}
+.cp-item:active{background:var(--primary-bg)}
+.cp-badge{width:28px;height:20px;border-radius:4px;background:var(--primary-bg);color:var(--primary);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:.3px}
+.cp-name{font-size:15px;font-weight:600;flex:1}
+.cp-region{font-size:12px;color:var(--text-3)}
+
+.truck-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.truck-option{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:var(--r-lg);background:var(--sep);border:2px solid transparent;cursor:pointer;font-family:inherit;transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.truck-option:active{transform:scale(.93)}
+.truck-option.selected{background:var(--dark);border-color:var(--dark)}
+.truck-option.selected .truck-name{color:#fff}
+.truck-emoji{font-size:26px}
+.truck-name{font-size:12px;font-weight:600;color:var(--text-2)}
+
+.post-success{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center}
+.success-circle{font-size:64px;margin-bottom:20px;animation:bIn .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes bIn{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.success-title{font-size:24px;font-weight:800;margin-bottom:8px}
+.success-body{font-size:15px;color:var(--text-3);margin-bottom:28px;line-height:1.5}
+
+/* ══ MY ADS ══ */
+.screen-header{background:var(--surface);padding:18px 16px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.my-ads-list{padding:12px;display:flex;flex-direction:column;gap:8px}
+.my-ad-card{background:var(--surface);border-radius:var(--r-xl);overflow:hidden;border:1px solid rgba(0,0,0,.05);box-shadow:var(--sh-sm)}
+.my-ad-header{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;border-bottom:1px solid var(--sep)}
+.my-ad-route{font-size:15px;font-weight:800;letter-spacing:-.2px}
+.my-ad-date{font-size:12px;color:var(--text-3)}
+.my-ad-body{padding:12px 14px}
+.my-ad-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.my-ad-actions{display:flex;gap:8px}
+.delete-confirm{display:none;margin-top:12px;padding:12px;background:var(--danger-bg);border-radius:var(--r-md)}
+.delete-confirm.visible{display:block}
+.delete-confirm p{font-size:13px;font-weight:600;color:var(--danger);margin-bottom:10px}
+.delete-confirm-btns{display:flex;gap:8px}
+.empty-state{display:flex;flex-direction:column;align-items:center;padding:52px 24px;text-align:center}
+.empty-icon{font-size:52px;margin-bottom:16px}
+.empty-title{font-size:18px;font-weight:800;margin-bottom:8px}
+.empty-body{font-size:14px;color:var(--text-3);margin-bottom:24px;line-height:1.5}
+
+/* ══ PROFILE SCREEN ══ */
+.profile-hero{background:var(--dark);margin:12px 12px 0;border-radius:var(--r-2xl);padding:22px 20px 20px;flex-shrink:0;position:relative;overflow:hidden}
+.profile-hero::before{content:'';position:absolute;top:-50px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none}
+.profile-hero::after{content:'';position:absolute;bottom:-40px;left:-30px;width:120px;height:120px;border-radius:50%;background:rgba(37,99,235,.2);pointer-events:none}
+.profile-hero-top{display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1}
+.profile-avatar{width:72px;height:72px;border-radius:22px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 4px 18px rgba(37,99,235,.45);overflow:hidden}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-info{flex:1;min-width:0}
+.profile-name-row{display:flex;align-items:center;gap:8px}
+.profile-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profile-edit-btn{flex-shrink:0;background:rgba(255,255,255,.12);border:none;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);font-family:inherit;transition:all .18s;display:flex;align-items:center;gap:4px}
+.profile-edit-btn:active{transform:scale(.92);background:rgba(255,255,255,.2)}
+.profile-username{font-size:13px;color:rgba(255,255,255,.55);font-weight:500;margin-top:4px}
+.profile-id{font-size:11px;color:rgba(255,255,255,.32);font-weight:500;margin-top:3px}
+.profile-badges{display:flex;gap:6px;margin-top:14px;position:relative;z-index:1;flex-wrap:wrap}
+.profile-badge{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:5px 11px;font-size:11px;font-weight:600;color:rgba(255,255,255,.7)}
+/* Edit name input overlay */
+.profile-name-edit{display:none;margin-top:14px;position:relative;z-index:1}
+.profile-name-edit.open{display:block}
+.profile-name-inp{width:100%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:var(--r-md);padding:10px 12px;font-family:inherit;font-size:16px;font-weight:700;color:#fff;outline:none}
+.profile-name-inp::placeholder{color:rgba(255,255,255,.35);font-weight:400}
+.profile-name-inp:focus{border-color:var(--primary);background:rgba(37,99,235,.2)}
+.profile-name-actions{display:flex;gap:8px;margin-top:8px}
+.pn-save{flex:2;background:var(--primary);border:none;border-radius:var(--r-md);padding:10px;font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:all .18s}
+.pn-cancel{flex:1;background:rgba(255,255,255,.12);border:none;border-radius:var(--r-md);padding:10px;font-family:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.7);cursor:pointer;transition:all .18s}
+/* Avatar upload overlay */
+.profile-avatar{position:relative;cursor:pointer}
+.av-upload-btn{position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;border-radius:50%;background:var(--primary);border:2px solid var(--dark);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;transition:transform .18s cubic-bezier(.34,1.56,.64,1);line-height:1}
+.av-upload-btn:active{transform:scale(.85)}
+
+.profile-content{padding:12px;display:flex;flex-direction:column;gap:8px}
+.settings-section{background:var(--surface);border-radius:var(--r-xl);overflow:hidden;border:1px solid rgba(0,0,0,.05)}
+.settings-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);padding:14px 14px 8px}
+.settings-row{display:flex;align-items:center;gap:12px;padding:13px 14px;border-top:1px solid var(--sep)}
+.settings-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.si-blue{background:var(--primary-bg)}.si-amber{background:var(--amber-bg)}.si-green{background:var(--success-bg)}.si-dark{background:var(--sep)}
+.settings-row-content{flex:1}
+.settings-row-title{font-size:14px;font-weight:600}
+.settings-row-value{font-size:12px;color:var(--text-3);font-weight:500;margin-top:1px}
+
+/* 4-lang toggle */
+.lang-toggle{display:flex;padding:8px 12px 14px;gap:6px;flex-wrap:wrap}
+.lang-option{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:var(--r-md);background:var(--sep);cursor:pointer;font-size:13px;font-weight:600;color:var(--text-2);transition:all .2s cubic-bezier(.34,1.56,.64,1);flex:1;min-width:calc(50% - 3px)}
+.lang-option.active{background:var(--dark);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.lang-option:active{transform:scale(.94)}
+.lang-flag{font-size:18px}
+
+.about-section{background:var(--surface);border-radius:var(--r-xl);padding:18px;text-align:center;border:1px solid rgba(0,0,0,.05)}
+.about-title{font-size:16px;font-weight:800;margin-bottom:6px}
+.about-desc{font-size:13px;color:var(--text-3);line-height:1.5;margin-bottom:12px}
+.about-version{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-4)}
+
+/* ══ DETAIL SHEET ══ */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;backdrop-filter:blur(4px)}
+.sheet-overlay.open{display:block;animation:fIn .25s ease}
+@keyframes fIn{from{opacity:0}to{opacity:1}}
+.bottom-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(0);width:100%;max-width:430px;background:var(--surface);border-radius:24px 24px 0 0;z-index:101;max-height:88dvh;overflow-y:auto;padding-bottom:32px;transition:transform .38s cubic-bezier(.22,1,.36,1);box-shadow:0 -12px 40px rgba(0,0,0,.15)}
+.bottom-sheet.closed{transform:translateX(-50%) translateY(100%)}
+.sheet-drag{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0}
+.sheet-close-btn{position:absolute;top:12px;right:14px;width:30px;height:30px;border-radius:50%;border:none;background:var(--sep);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-family:inherit}
+.sheet-head{padding:16px 20px 14px;border-bottom:1px solid var(--border)}
+.sheet-route{font-size:20px;font-weight:800;letter-spacing:-.4px}
+.sheet-time{font-size:12px;color:var(--text-3);margin-top:3px}
+.sheet-details{padding:4px 20px}
+.detail-item{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--sep)}
+.detail-item:last-child{border-bottom:none}
+.detail-icon{width:40px;height:40px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px}
+.di-blue{background:var(--primary-bg)}.di-green{background:var(--success-bg)}.di-amber{background:var(--amber-bg)}.di-red{background:var(--danger-bg)}
+.detail-key{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3)}
+.detail-val{font-size:15px;font-weight:700;margin-top:2px}
+.sheet-actions{display:flex;gap:10px;padding:14px 20px}
+
+/* TOAST */
+.toast-msg{position:fixed;bottom:calc(var(--nav-h) + var(--nav-bot) + 18px);left:50%;transform:translateX(-50%) translateY(12px) scale(.95);background:rgba(17,24,39,.92);color:#fff;padding:11px 22px;border-radius:28px;font-size:13px;font-weight:600;z-index:500;opacity:0;transition:all .32s cubic-bezier(.22,1,.36,1);pointer-events:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25);backdrop-filter:blur(8px)}
+.toast-msg.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+
+.title-md{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.caption{font-size:12px;color:var(--text-3);font-weight:500}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- ══ NAV ══ -->
+<nav class="bottom-nav" style="order:99">
+  <button class="nav-item active" id="nav-search" onclick="showScreen('search')">
+    <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span id="nl-0">Qidiruv</span>
+  </button>
+  <button class="nav-item" id="nav-post" onclick="showScreen('post')">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    <span id="nl-1">E'lon</span>
+  </button>
+  <button class="nav-item" id="nav-myads" onclick="showScreen('myads')">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <div class="nav-badge" id="my-badge"></div>
+    <span id="nl-2">E'lonlarim</span>
+  </button>
+  <button class="nav-item" id="nav-profile" onclick="showScreen('profile')">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span id="nl-3">Profil</span>
+  </button>
+</nav>
+
+<!-- ══ SEARCH ══ -->
+<div class="screen active" id="screen-search">
+  <div class="hero-card">
+    <div class="hero-top">
+      <div class="hero-logo">
+        <div class="hero-icon">🚛</div>
+        <div>
+          <div class="hero-brand">Logistradar</div>
+          <div class="hero-tagline" id="tagline">Logistika Platformasi</div>
+        </div>
+      </div>
+      <div class="hero-status">
+        <div class="hero-dot"></div>
+        <span id="status-lbl">Jonli</span>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num" id="total-count">33</div>
+        <div class="hero-stat-lbl" id="ml-0">E'lon</div>
+      </div>
+      <div class="hero-stat-sep"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">38</div>
+        <div class="hero-stat-lbl" id="ml-1">Bugungi</div>
+      </div>
+      <div class="hero-stat-sep"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">300+</div>
+        <div class="hero-stat-lbl" id="ml-2">Guruh</div>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <button class="hero-btn accent" onclick="showScreen('post')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span id="hero-post-lbl">E'lon qo'shish</span>
+      </button>
+      <button class="hero-btn" onclick="showScreen('myads')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span id="hero-my-lbl">E'lonlarim</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="search-form">
+    <!-- Route pair — tap to open city picker sheet -->
+    <div class="search-route-card">
+      <div class="src-row" onclick="openCityPicker('inp-from','Qayerdan')">
+        <div class="src-dot src-dot-blue"></div>
+        <div class="src-texts">
+          <div class="src-lbl" id="lbl-from">Qayerdan</div>
+          <div class="src-val" id="inp-from-display">Shahar tanlang...</div>
+        </div>
+        <button class="src-clear" id="clr-from" onclick="event.stopPropagation();clearSearchField('inp-from')">✕</button>
+      </div>
+      <div class="src-sep">
+        <div class="src-sep-line"></div>
+        <button class="src-swap" onclick="swapCities()">⇄</button>
+      </div>
+      <div class="src-row" onclick="openCityPicker('inp-to','Qayerga')">
+        <div class="src-dot src-dot-red"></div>
+        <div class="src-texts">
+          <div class="src-lbl" id="lbl-to">Qayerga</div>
+          <div class="src-val" id="inp-to-display">Shahar tanlang...</div>
+        </div>
+        <button class="src-clear" id="clr-to" onclick="event.stopPropagation();clearSearchField('inp-to')">✕</button>
+      </div>
+      <input type="hidden" id="inp-from">
+      <input type="hidden" id="inp-to">
+    </div>
+
+    <!-- Truck chips -->
+    <div class="truck-chips-row" id="truck-chips-row">
+      <div class="truck-chip sel" onclick="pickTruckFilter(this,'')">Barchasi</div>
+      <div class="truck-chip" onclick="pickTruckFilter(this,'Tent')">🚚 Tent</div>
+      <div class="truck-chip" onclick="pickTruckFilter(this,'Ref')">❄️ Ref</div>
+      <div class="truck-chip" onclick="pickTruckFilter(this,'Izoterma')">🌡️ Izoterma</div>
+      <div class="truck-chip" onclick="pickTruckFilter(this,'Konteyner')">📦 Konteyner</div>
+      <div class="truck-chip" onclick="pickTruckFilter(this,'Bortovoy')">🚛 Bortovoy</div>
+      <div class="truck-chip" onclick="pickTruckFilter(this,'Isuzu')">🚐 Isuzu</div>
+    </div>
+
+    <button class="btn btn-dark btn-block btn-lg" onclick="doSearch()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span id="btn-search-lbl">Qidirish</span>
+    </button>
+  </div>
+
+  <div class="route-chips">
+    <div class="chips-title" id="chips-title">Tezkor yo'nalishlar</div>
+    <div class="chips-scroll">
+      <div class="chip selected" onclick="quickRoute('','',this)">🌍 Barcha</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Moskva',this)">🇷🇺 Moskva</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Istanbul',this)">🇹🇷 Istanbul</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Almati',this)">🇰🇿 Almati</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Berlin',this)">🇩🇪 Berlin</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Dubai',this)">🇦🇪 Dubai</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Urumqi',this)">🇨🇳 Xitoy</div>
+      <div class="chip" onclick="quickRoute('Termiz','Mazar-i-Sharif',this)">🇦🇫 Afgʻon</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Boku',this)">🇦🇿 Boku</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Minsk',this)">🇧🇾 Belarus</div>
+      <div class="chip" onclick="quickRoute('Toshkent','Riga',this)">🇱🇻 Latviya</div>
+      <div class="chip" onclick="quickRoute('Buxoro','Tehron',this)">🇮🇷 Eron</div>
+      <div class="chip" onclick="quickRoute('Samarqand','',this)">📍 Samarqand</div>
+      <div class="chip" onclick="quickRoute('Andijon','',this)">📍 Andijon</div>
+    </div>
+  </div>
+
+  <div class="results-header" id="res-header" style="display:none">
+    <div class="results-count"><strong id="res-count">0</strong> <span id="res-label">ta natija</span></div>
+    <button class="sort-toggle" id="sort-btn" onclick="toggleSort()">↓ Yangi</button>
+  </div>
+  <div class="results-list" id="results-list"></div>
+  <button class="load-more-btn" id="load-more-btn" onclick="loadMore()">Ko'proq ko'rish →</button>
+  <div style="height:8px"></div>
+</div>
+
+<!-- ══ POST ══ -->
+<div class="screen" id="screen-post">
+  <div class="post-header">
+    <div class="post-header-row">
+      <div>
+        <div class="title-md" id="post-screen-title">E'lon qo'shish</div>
+        <div class="caption" style="margin-top:3px" id="post-screen-sub">Yuk yoki mashina e'lonini joylashtiring</div>
+      </div>
+      <div class="post-step-counter" id="step-counter">1 / 7</div>
+    </div>
+    <div class="progress-bar" id="prog-bar">
+      <div class="progress-dot current" id="pd-0"></div>
+      <div class="progress-dot" id="pd-1"></div>
+      <div class="progress-dot" id="pd-2"></div>
+      <div class="progress-dot" id="pd-3"></div>
+      <div class="progress-dot" id="pd-4"></div>
+      <div class="progress-dot" id="pd-5"></div>
+      <div class="progress-dot" id="pd-6"></div>
+    </div>
+  </div>
+
+  <div class="step-body active" id="step-0">
+    <div class="step-number" id="sq-num-0">Qadam 1 / 7</div>
+    <div class="step-question" id="sq-0">Qayerdan jo'naysiz?</div>
+    <div class="step-hint" id="sh-0">Shahar yoki viloyat nomini tanlang</div>
+    <div class="step-loc-card" onclick="openCityPicker('p-from','Jo\'nash manzili')">
+      <div class="step-loc-row">
+        <div class="step-loc-icon from">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+        </div>
+        <div class="step-loc-texts">
+          <div class="step-loc-lbl" id="p-from-lbl">Jo'nash manzili</div>
+          <div class="step-loc-val empty" id="p-from-display">Shahar tanlang...</div>
+        </div>
+        <div class="step-loc-arrow">›</div>
+      </div>
+    </div>
+    <input type="hidden" id="p-from">
+    <div class="step-spacer"></div>
+    <button class="btn btn-dark btn-block btn-lg" onclick="stepNext(1)"><span id="next-btn-0">Davom etish</span> →</button>
+  </div>
+
+  <div class="step-body" id="step-1">
+    <div class="step-number">Qadam 2 / 7</div>
+    <div class="step-question" id="sq-1">Qayerga olib borasiz?</div>
+    <div class="step-hint" id="sh-1">Manzil — shahar yoki mamlakat</div>
+    <div class="step-loc-card" onclick="openCityPicker('p-to','Boradigan joy')">
+      <div class="step-loc-row">
+        <div class="step-loc-icon to">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        </div>
+        <div class="step-loc-texts">
+          <div class="step-loc-lbl" id="p-to-lbl">Boradigan joy</div>
+          <div class="step-loc-val empty" id="p-to-display">Shahar tanlang...</div>
+        </div>
+        <div class="step-loc-arrow">›</div>
+      </div>
+    </div>
+    <input type="hidden" id="p-to">
+    <div class="step-spacer"></div>
+    <button class="btn btn-dark btn-block btn-lg" onclick="stepNext(2)">Davom etish →</button>
+  </div>
+
+  <div class="step-body" id="step-2">
+    <div class="step-number">Qadam 3 / 7</div>
+    <div class="step-question" id="sq-2">Yuk og'irligi?</div>
+    <div class="step-hint" id="sh-2">Kilogram yoki tonna ko'rsating</div>
+    <div class="step-input-group">
+      <div class="step-input-label">Og'irlik</div>
+      <input class="step-input" id="p-weight" type="text" placeholder="10 tonna">
+    </div>
+    <div class="step-spacer"></div>
+    <button class="btn btn-dark btn-block btn-lg" onclick="stepNext(3)">Davom etish →</button>
+  </div>
+
+  <div class="step-body" id="step-3">
+    <div class="step-number">Qadam 4 / 7</div>
+    <div class="step-question" id="sq-3">Mashina turini tanlang</div>
+    <div class="step-hint" id="sh-3">Yukingizga mos keladigan mashina</div>
+    <div class="truck-grid">
+      <button class="truck-option" onclick="pickTruck(this,'Tent')"><span class="truck-emoji">🚚</span><span class="truck-name">Tent</span></button>
+      <button class="truck-option" onclick="pickTruck(this,'Ref')"><span class="truck-emoji">❄️</span><span class="truck-name">Ref</span></button>
+      <button class="truck-option" onclick="pickTruck(this,'Izoterma')"><span class="truck-emoji">🌡️</span><span class="truck-name">Izoterma</span></button>
+      <button class="truck-option" onclick="pickTruck(this,'Konteyner')"><span class="truck-emoji">📦</span><span class="truck-name">Konteyner</span></button>
+      <button class="truck-option" onclick="pickTruck(this,'Bortovoy')"><span class="truck-emoji">🚛</span><span class="truck-name">Bortovoy</span></button>
+      <button class="truck-option" onclick="pickTruck(this,'Isuzu')"><span class="truck-emoji">🚐</span><span class="truck-name">Isuzu</span></button>
+    </div>
+    <div class="step-spacer"></div>
+    <button class="btn btn-dark btn-block btn-lg" onclick="stepNext(4)">Davom etish →</button>
+  </div>
+
+  <div class="step-body" id="step-4">
+    <div class="step-number">Qadam 5 / 7</div>
+    <div class="step-question" id="sq-4">Qanday yuk?</div>
+    <div class="step-hint" id="sh-4">Yuk turini qisqacha yozing</div>
+    <div class="step-input-group">
+      <div class="step-input-label">Yuk turi</div>
+      <input class="step-input" id="p-cargo" type="text" placeholder="Qurilish materiallari">
+    </div>
+    <div class="step-spacer"></div>
+    <button class="btn btn-dark btn-block btn-lg" onclick="stepNext(5)">Davom etish →</button>
+  </div>
+
+  <div class="step-body" id="step-5">
+    <div class="step-number">Qadam 6 / 7</div>
+    <div class="step-question" id="sq-5">Narxi qancha?</div>
+    <div class="step-hint" id="sh-5">Dollar, so'm yoki "kelishiladi"</div>
+    <div class="step-input-group">
+      <div class="step-input-label">Narx</div>
+      <input class="step-input" id="p-price" type="text" placeholder="800$ yoki kelishiladi">
+    </div>
+    <div class="step-spacer"></div>
+    <button class="btn btn-dark btn-block btn-lg" onclick="stepNext(6)">Davom etish →</button>
+  </div>
+
+  <div class="step-body" id="step-6">
+    <div class="step-number">Qadam 7 / 7</div>
+    <div class="step-question" id="sq-6">Telefon raqamingiz?</div>
+    <div class="step-hint" id="sh-6">Xaridorlar siz bilan to'g'ridan-to'g'ri bog'lanadi</div>
+    <div class="step-input-group">
+      <div class="step-input-label">Telefon</div>
+      <input class="step-input" id="p-phone" type="tel" placeholder="+998 90 123 45 67">
+    </div>
+    <div class="step-spacer"></div>
+    <button class="btn btn-success btn-block btn-lg" onclick="submitPost()" id="submit-btn">E'lonni joylashtirish ✓</button>
+  </div>
+
+  <div class="post-success" id="post-success">
+    <div class="success-circle">🎉</div>
+    <div class="success-title" id="suc-title">E'lon joylandi!</div>
+    <div class="success-body" id="suc-body">Muvaffaqiyatli qo'shildi.</div>
+    <button class="btn btn-dark btn-lg" onclick="showScreen('myads')" id="suc-btn">E'lonlarimni ko'rish →</button>
+  </div>
+</div>
+
+<!-- ══ MY ADS ══ -->
+<div class="screen" id="screen-myads">
+  <div class="screen-header">
+    <div class="title-md" id="myads-title">Mening E'lonlarim</div>
+    <div class="caption" style="margin-top:3px" id="myads-sub">Joylangan e'lonlaringiz</div>
+  </div>
+  <div class="my-ads-list" id="my-ads-list"></div>
+</div>
+
+<!-- ══ PROFILE ══ -->
+<div class="screen" id="screen-profile">
+  <!-- Profile hero -->
+  <div class="profile-hero">
+    <div class="profile-hero-top">
+      <div class="profile-avatar" id="profile-avatar">👤</div>
+      <div class="profile-info">
+        <div class="profile-name-row">
+          <div class="profile-name" id="profile-name">Foydalanuvchi</div>
+          <button class="profile-edit-btn" onclick="toggleNameEdit()">✏️ Tahrir</button>
+        </div>
+        <div class="profile-username" id="profile-username">@username</div>
+        <div class="profile-id" id="profile-id">ID: —</div>
+      </div>
+    </div>
+    <!-- Hidden file input for avatar upload -->
+    <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
+    <!-- Name edit box -->
+    <div class="profile-name-edit" id="name-edit-box">
+      <input class="profile-name-inp" id="name-edit-inp" placeholder="Ismingizni kiriting..." maxlength="40">
+      <div class="profile-name-actions">
+        <button class="pn-save" onclick="saveProfileName()">✓ Saqlash</button>
+        <button class="pn-cancel" onclick="toggleNameEdit()">Bekor</button>
+      </div>
+    </div>
+    <div class="profile-badges">
+      <div class="profile-badge">🚛 Logistradar foydalanuvchisi</div>
+      <div class="profile-badge" id="pb-ads">📋 0 ta e'lon</div>
+    </div>
+  </div>
+
+  <div class="profile-content">
+    <!-- Language -->
+    <div class="settings-section">
+      <div class="settings-section-title" id="lang-section-title">Til / Language</div>
+      <div class="lang-toggle">
+        <div class="lang-option active" id="lo-uz" onclick="setLanguage('uz')"><span class="lang-flag">🇺🇿</span> O'zbek</div>
+        <div class="lang-option" id="lo-uzk" onclick="setLanguage('uzk')"><span class="lang-flag">🇺🇿</span> Кирилл</div>
+        <div class="lang-option" id="lo-ru" onclick="setLanguage('ru')"><span class="lang-flag">🇷🇺</span> Русский</div>
+        <div class="lang-option" id="lo-en" onclick="setLanguage('en')"><span class="lang-flag">🇬🇧</span> English</div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="settings-section">
+      <div class="settings-section-title" id="stats-title">Statistika</div>
+      <div class="settings-row">
+        <div class="settings-icon si-amber">📋</div>
+        <div class="settings-row-content">
+          <div class="settings-row-title" id="s-myads-lbl">Mening e'lonlarim</div>
+          <div class="settings-row-value" id="s-myads-val">0 ta</div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-icon si-blue">🔍</div>
+        <div class="settings-row-content">
+          <div class="settings-row-title" id="s-total-lbl">Jami e'lonlar</div>
+          <div class="settings-row-value" id="s-total-val">33 ta</div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-icon si-green">📡</div>
+        <div class="settings-row-content">
+          <div class="settings-row-title" id="s-groups-lbl">Kuzatiladigan guruhlar</div>
+          <div class="settings-row-value">300+ guruh</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="about-section">
+      <div class="about-title">Logistradar</div>
+      <div class="about-desc">O'zbekiston va MDH bo'ylab yuk tashish platformasi. Real vaqtda 300+ guruhdan e'lonlar yig'iladi.</div>
+      <div class="about-version">VERSIYA 1.0 · 2025</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /root -->
+
+<!-- City Picker Sheet -->
+<div class="city-picker-overlay" id="cp-overlay" onclick="closeCityPicker()"></div>
+<div class="city-picker-sheet" id="cp-sheet">
+  <div class="cp-drag"></div>
+  <div class="cp-header">
+    <div class="cp-title" id="cp-title">Shahar tanlang</div>
+    <button class="cp-close" onclick="closeCityPicker()">✕</button>
+  </div>
+  <div class="cp-search">
+    <svg class="cp-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="cp-search-inp" id="cp-search-inp" placeholder="Shahar yoki mamlakat..." autocomplete="off" oninput="renderCPList()">
+  </div>
+  <div class="cp-list" id="cp-list"></div>
+</div>
+
+<!-- Sheet -->
+<div class="sheet-overlay" id="sheet-overlay" onclick="closeSheet()"></div>
+<div class="bottom-sheet closed" id="bottom-sheet">
+  <div class="sheet-drag"></div>
+  <button class="sheet-close-btn" onclick="closeSheet()">✕</button>
+  <div class="sheet-head">
+    <div class="sheet-route" id="sh-route"></div>
+    <div class="sheet-time" id="sh-time"></div>
+  </div>
+  <div class="sheet-details" id="sh-details"></div>
+  <div class="sheet-actions">
+    <button class="btn btn-dark" style="flex:2" onclick="callAd()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.67A2 2 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14z"/></svg>
+      <span id="btn-call">Qo'ng'iroq</span>
+    </button>
+    <button class="btn btn-outline" style="flex:1" onclick="copyPhone()"><span id="btn-copy">Nusxa</span></button>
+  </div>
+</div>
+<div class="toast-msg" id="toast"></div>
+
+<script>
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand()}
+function haptic(t='light'){tg?.HapticFeedback?.impactOccurred(t)}
+
+// ── Cities ──
+const CITIES=[
+  {n:'Toshkent',f:'🇺🇿',r:'O\'zbekiston'},{n:'Samarqand',f:'🇺🇿',r:'O\'zbekiston'},
+  {n:'Buxoro',f:'🇺🇿',r:'O\'zbekiston'},{n:'Namangan',f:'🇺🇿',r:'O\'zbekiston'},
+  {n:'Andijon',f:'🇺🇿',r:'O\'zbekiston'},{n:'Farg\'ona',f:'🇺🇿',r:'O\'zbekiston'},
+  {n:'Qarshi',f:'🇺🇿',r:'O\'zbekiston'},{n:'Termiz',f:'🇺🇿',r:'O\'zbekiston'},
+  {n:'Nukus',f:'🇺🇿',r:'O\'zbekiston'},{n:'Navoiy',f:'🇺🇿',r:'O\'zbekiston'},
+  {n:'Jizzax',f:'🇺🇿',r:'O\'zbekiston'},{n:'Guliston',f:'🇺🇿',r:'O\'zbekiston'},
+  {n:'Urganch',f:'🇺🇿',r:'O\'zbekiston'},{n:'Denov',f:'🇺🇿',r:'O\'zbekiston'},
+  {n:'Moskva',f:'🇷🇺',r:'Rossiya'},{n:'Sankt-Peterburg',f:'🇷🇺',r:'Rossiya'},
+  {n:'Novosibirsk',f:'🇷🇺',r:'Rossiya'},{n:'Yekaterinburg',f:'🇷🇺',r:'Rossiya'},
+  {n:'Chelyabinsk',f:'🇷🇺',r:'Rossiya'},{n:'Krasnoyarsk',f:'🇷🇺',r:'Rossiya'},
+  {n:'Tyumen',f:'🇷🇺',r:'Rossiya'},{n:'Omsk',f:'🇷🇺',r:'Rossiya'},
+  {n:'Ufa',f:'🇷🇺',r:'Rossiya'},{n:'Qozon',f:'🇷🇺',r:'Rossiya'},
+  {n:'Almati',f:'🇰🇿',r:'Qozog\'iston'},{n:'Astana',f:'🇰🇿',r:'Qozog\'iston'},
+  {n:'Shymkent',f:'🇰🇿',r:'Qozog\'iston'},{n:'Aktobe',f:'🇰🇿',r:'Qozog\'iston'},
+  {n:'Istanbul',f:'🇹🇷',r:'Turkiya'},{n:'Ankara',f:'🇹🇷',r:'Turkiya'},
+  {n:'Izmir',f:'🇹🇷',r:'Turkiya'},{n:'Mersin',f:'🇹🇷',r:'Turkiya'},
+  {n:'Berlin',f:'🇩🇪',r:'Germaniya'},{n:'Hamburg',f:'🇩🇪',r:'Germaniya'},
+  {n:'Frankfurt',f:'🇩🇪',r:'Germaniya'},{n:'Myunxen',f:'🇩🇪',r:'Germaniya'},
+  {n:'Varshava',f:'🇵🇱',r:'Polsha'},{n:'Krakov',f:'🇵🇱',r:'Polsha'},
+  {n:'Riga',f:'🇱🇻',r:'Latviya'},{n:'Tallin',f:'🇪🇪',r:'Estoniya'},{n:'Vilnyus',f:'🇱🇹',r:'Litva'},
+  {n:'Minsk',f:'🇧🇾',r:'Belarus'},{n:'Brest',f:'🇧🇾',r:'Belarus'},
+  {n:'Dubai',f:'🇦🇪',r:'BAA'},{n:'Abu-Dabi',f:'🇦🇪',r:'BAA'},
+  {n:'Tbilisi',f:'🇬🇪',r:'Gruziya'},{n:'Batumi',f:'🇬🇪',r:'Gruziya'},
+  {n:'Boku',f:'🇦🇿',r:'Ozarbayjon'},{n:'Yerevan',f:'🇦🇲',r:'Armaniston'},
+  {n:'Dushanbe',f:'🇹🇯',r:'Tojikiston'},{n:'Xujand',f:'🇹🇯',r:'Tojikiston'},
+  {n:'Bishkek',f:'🇰🇬',r:'Qirg\'iziston'},{n:'O\'sh',f:'🇰🇬',r:'Qirg\'iziston'},
+  {n:'Ashxabad',f:'🇹🇲',r:'Turkmaniston'},{n:'Turkmanboshi',f:'🇹🇲',r:'Turkmaniston'},
+  {n:'Urumqi',f:'🇨🇳',r:'Xitoy'},{n:'Pekin',f:'🇨🇳',r:'Xitoy'},
+  {n:'Shanhay',f:'🇨🇳',r:'Xitoy'},{n:'Guangzhou',f:'🇨🇳',r:'Xitoy'},
+  {n:'Tehron',f:'🇮🇷',r:'Eron'},{n:'Mashhad',f:'🇮🇷',r:'Eron'},
+  {n:'Kobul',f:'🇦🇫',r:'Afgʻoniston'},{n:'Mazar-i-Sharif',f:'🇦🇫',r:'Afgʻoniston'},{n:'Hirot',f:'🇦🇫',r:'Afgʻoniston'},
+  {n:'Riyadh',f:'🇸🇦',r:'Saudiya'},{n:'Jidda',f:'🇸🇦',r:'Saudiya'},
+];
+
+const ADS=[
+  {id:1,fr:'Toshkent',to:'Moskva',truck:'Tent',wt:'20 t',pr:'1 200$',cargo:'Qurilish materiallari',phone:'+998901234567',dist:'2 850 km',time:'12 daq oldin'},
+  {id:2,fr:'Samarqand',to:'Istanbul',truck:'Ref',wt:'10 t',pr:'2 000$',cargo:'Meva-sabzavot',phone:'+998711234567',dist:'4 100 km',time:'28 daq oldin'},
+  {id:3,fr:'Andijon',to:'Novosibirsk',truck:'Konteyner',wt:'25 t',pr:'1 500$',cargo:'Elektronika',phone:'+998951234567',dist:'3 100 km',time:'1 soat oldin'},
+  {id:4,fr:'Toshkent',to:'Almati',truck:'Izoterma',wt:'8 t',pr:'650$',cargo:'Oziq-ovqat',phone:'+998931234567',dist:'1 150 km',time:'1 soat oldin'},
+  {id:5,fr:'Buxoro',to:'Moskva',truck:'Tent',wt:'15 t',pr:'1 300$',cargo:'Mebel',phone:'+998881234567',dist:'3 000 km',time:'2 soat oldin'},
+  {id:6,fr:'Farg\'ona',to:'Sankt-Peterburg',truck:'Bortovoy',wt:'12 t',pr:'1 800$',cargo:'Kiyim-kechak',phone:'+998901234567',dist:'4 600 km',time:'2 soat oldin'},
+  {id:7,fr:'Namangan',to:'Yekaterinburg',truck:'Tent',wt:'18 t',pr:'1 100$',cargo:'Sanoat jihozlari',phone:'+998711234567',dist:'2 900 km',time:'3 soat oldin'},
+  {id:8,fr:'Toshkent',to:'Dubai',truck:'Konteyner',wt:'5 t',pr:'3 000$',cargo:'Farmatsevtika',phone:'+998951234567',dist:'4 800 km',time:'4 soat oldin'},
+  {id:9,fr:'Qarshi',to:'Moskva',truck:'Ref',wt:'10 t',pr:'1 250$',cargo:'Meva-sabzavot',phone:'+998931234567',dist:'2 900 km',time:'5 soat oldin'},
+  {id:10,fr:'Toshkent',to:'Istanbul',truck:'Tent',wt:'20 t',pr:'1 900$',cargo:'Auto zapchastlar',phone:'+998881234567',dist:'4 100 km',time:'5 soat oldin'},
+  {id:11,fr:'Navoiy',to:'Astana',truck:'Bortovoy',wt:'22 t',pr:'950$',cargo:'Qishloq xo\'jaligi',phone:'+998901234567',dist:'2 100 km',time:'Bugun'},
+  {id:12,fr:'Toshkent',to:'Bishkek',truck:'Isuzu',wt:'3 t',pr:'300$',cargo:'Kichik yuklar',phone:'+998711234567',dist:'870 km',time:'Bugun'},
+  {id:13,fr:'Samarqand',to:'Almati',truck:'Tent',wt:'16 t',pr:'800$',cargo:'Charm mahsulotlar',phone:'+998951234567',dist:'1 400 km',time:'Bugun'},
+  {id:14,fr:'Toshkent',to:'Tbilisi',truck:'Ref',wt:'7 t',pr:'1 100$',cargo:'Oziq-ovqat',phone:'+998931234567',dist:'2 200 km',time:'Kecha'},
+  {id:15,fr:'Termiz',to:'Dushanbe',truck:'Bortovoy',wt:'20 t',pr:'400$',cargo:'Qurilish materiallari',phone:'+998881234567',dist:'500 km',time:'Kecha'},
+  {id:16,fr:'Toshkent',to:'Chelyabinsk',truck:'Tent',wt:'18 t',pr:'1 050$',cargo:'Sanoat jihozlari',phone:'+998901234567',dist:'2 700 km',time:'2 kun oldin'},
+  {id:17,fr:'Andijon',to:'Istanbul',truck:'Konteyner',wt:'20 t',pr:'2 200$',cargo:'Elektronika',phone:'+998711234567',dist:'4 300 km',time:'2 kun oldin'},
+  {id:18,fr:'Toshkent',to:'Ashxabad',truck:'Isuzu',wt:'2 t',pr:'250$',cargo:'Kichik yuklar',phone:'+998951234567',dist:'600 km',time:'2 kun oldin'},
+  {id:19,fr:'Toshkent',to:'Krasnoyarsk',truck:'Tent',wt:'20 t',pr:'1 600$',cargo:'Qurilish materiallari',phone:'+998931234567',dist:'3 900 km',time:'3 kun oldin'},
+  {id:20,fr:'Farg\'ona',to:'Almati',truck:'Ref',wt:'9 t',pr:'700$',cargo:'Meva-sabzavot',phone:'+998881234567',dist:'1 300 km',time:'3 kun oldin'},
+  {id:21,fr:'Toshkent',to:'Berlin',truck:'Konteyner',wt:'20 t',pr:'4 500$',cargo:'Tekstil',phone:'+998901234567',dist:'6 200 km',time:'4 kun oldin'},
+  {id:22,fr:'Samarqand',to:'Hamburg',truck:'Tent',wt:'18 t',pr:'4 800$',cargo:'Qurilish materiallari',phone:'+998711234567',dist:'6 400 km',time:'4 kun oldin'},
+  {id:23,fr:'Toshkent',to:'Frankfurt',truck:'Ref',wt:'10 t',pr:'5 200$',cargo:'Farmatsevtika',phone:'+998951234567',dist:'6 100 km',time:'4 kun oldin'},
+  {id:24,fr:'Toshkent',to:'Varshava',truck:'Tent',wt:'22 t',pr:'3 800$',cargo:'Mebel',phone:'+998931234567',dist:'5 300 km',time:'5 kun oldin'},
+  {id:25,fr:'Toshkent',to:'Minsk',truck:'Bortovoy',wt:'15 t',pr:'2 900$',cargo:'Kiyim-kechak',phone:'+998881234567',dist:'4 500 km',time:'5 kun oldin'},
+  {id:26,fr:'Toshkent',to:'Urumqi',truck:'Konteyner',wt:'25 t',pr:'3 200$',cargo:'Paxta',phone:'+998901234567',dist:'3 800 km',time:'1 hafta oldin'},
+  {id:27,fr:'Andijon',to:'Urumqi',truck:'Tent',wt:'20 t',pr:'2 800$',cargo:'Ipak mahsulotlari',phone:'+998711234567',dist:'3 500 km',time:'1 hafta oldin'},
+  {id:28,fr:'Termiz',to:'Mashhad',truck:'Bortovoy',wt:'15 t',pr:'600$',cargo:'Qurilish materiallari',phone:'+998951234567',dist:'700 km',time:'1 hafta oldin'},
+  {id:29,fr:'Buxoro',to:'Tehron',truck:'Tent',wt:'18 t',pr:'1 200$',cargo:'Sanoat jihozlari',phone:'+998931234567',dist:'2 100 km',time:'1 hafta oldin'},
+  {id:30,fr:'Termiz',to:'Mazar-i-Sharif',truck:'Bortovoy',wt:'20 t',pr:'350$',cargo:'Oziq-ovqat',phone:'+998881234567',dist:'350 km',time:'1 hafta oldin'},
+  {id:31,fr:'Toshkent',to:'Boku',truck:'Ref',wt:'8 t',pr:'1 400$',cargo:'Meva-sabzavot',phone:'+998901234567',dist:'2 900 km',time:'8 kun oldin'},
+  {id:32,fr:'Samarqand',to:'Dubai',truck:'Konteyner',wt:'10 t',pr:'3 500$',cargo:'Charm mahsulotlari',phone:'+998711234567',dist:'4 900 km',time:'8 kun oldin'},
+  {id:33,fr:'Toshkent',to:'Riga',truck:'Tent',wt:'20 t',pr:'4 200$',cargo:'Elektronika',phone:'+998951234567',dist:'5 600 km',time:'10 kun oldin'},
+];
+
+// ── State ──
+let lang=localStorage.getItem('yk_lang')||'uz';
+let filtered=[...ADS],offset=0;
+const PAGE=8;
+let sortDesc=true,currentStep=0,postData={},selectedTruck=null,activeAd=null,activeTruck='';
+
+// ── 4 Languages ──
+const TR={
+  uz:{
+    navLabels:['Qidiruv','E\'lon','E\'lonlarim','Profil'],
+    tagline:'Logistradar Platformasi',statusLbl:'Jonli',
+    metricLabels:['E\'lon','Bugungi','Guruh'],
+    lblFrom:'Qayerdan',lblTo:'Qayerga',
+    searchBtn:'Qidirish',chipsTitle:'Tezkor yo\'nalishlar',
+    resLabel:'ta natija',sortNew:'↓ Yangi',sortOld:'↑ Eski',loadMore:'Ko\'proq ko\'rish →',
+    callBtn:'Qo\'ng\'iroq',copyBtn:'Nusxa',copied:'Nusxa olindi',
+    postTitle:'E\'lon qo\'shish',postSub:'Yuk yoki mashina e\'lonini joylashtiring',
+    stepLabels:['1/7','2/7','3/7','4/7','5/7','6/7','7/7'],
+    stepQ:['Qayerdan jo\'naysiz?','Qayerga olib borasiz?','Yuk og\'irligi?','Mashina turi','Qanday yuk?','Narxi?','Telefon raqam?'],
+    stepH:['Shahar yoki viloyat kiriting','Manzil — shahar yoki mamlakat','Kilogram yoki tonna','Yukingizga mos mashina','Yuk turini yozing','Dollar, so\'m yoki kelishiladi','Xaridorlar siz bilan bog\'lanadi'],
+    sucTitle:'E\'lon joylandi!',sucBody:'Muvaffaqiyatli qo\'shildi. Ko\'p xaridorlar siz bilan bog\'lanadi.',sucBtn:'E\'lonlarimni ko\'rish →',
+    myadsTitle:'Mening E\'lonlarim',myadsSub:'Joylangan e\'lonlaringiz',
+    emptyTitle:'E\'lonlar yo\'q',emptyBody:'Hali e\'lon qo\'shmagansiz.',emptyBtn:'E\'lon qo\'shish',
+    delBtn:'O\'chirish',delConfirm:'O\'chirishni tasdiqlaysizmi?',delYes:'Ha, o\'chir',delNo:'Bekor',
+    langSectionTitle:'Til / Language',statsTitle:'Statistika',
+    sMyadsLbl:'Mening e\'lonlarim',sTotalLbl:'Jami e\'lonlar',sGroupsLbl:'Guruhlar',
+    detailTruck:'Mashina',detailWeight:'Og\'irlik',detailCargo:'Yuk',detailPrice:'Narx',detailDist:'Masofa',detailPhone:'Telefon',
+    fill:'Iltimos, maydonni to\'ldiring',selTruck:'Mashina turini tanlang',liveLbl:'Faol',
+    heroPost:'E\'lon qo\'shish',heroMy:'E\'lonlarim',
+    profileTitle:'Profil',
+  },
+  ru:{
+    navLabels:['Поиск','Объявление','Мои','Профиль'],
+    tagline:'Платформа Logistradar',statusLbl:'Онлайн',
+    metricLabels:['Объявл.','Сегодня','Групп'],
+    lblFrom:'Откуда',lblTo:'Куда',
+    searchBtn:'Найти',chipsTitle:'Быстрые маршруты',
+    resLabel:'результатов',sortNew:'↓ Новые',sortOld:'↑ Старые',loadMore:'Показать ещё →',
+    callBtn:'Позвонить',copyBtn:'Копировать',copied:'Скопировано',
+    postTitle:'Добавить объявление',postSub:'Разместите объявление о грузе или машине',
+    stepLabels:['1/7','2/7','3/7','4/7','5/7','6/7','7/7'],
+    stepQ:['Откуда едете?','Куда везёте?','Вес груза?','Тип машины','Тип груза?','Стоимость?','Телефон?'],
+    stepH:['Город или область','Пункт назначения','Кг или тонны','Подходящая машина','Тип груза кратко','Долл., сумы или договорная','Покупатели свяжутся с вами'],
+    sucTitle:'Объявление размещено!',sucBody:'Успешно добавлено.',sucBtn:'Мои объявления →',
+    myadsTitle:'Мои объявления',myadsSub:'Размещённые объявления',
+    emptyTitle:'Нет объявлений',emptyBody:'Вы ещё не добавляли объявлений.',emptyBtn:'Добавить',
+    delBtn:'Удалить',delConfirm:'Удалить объявление?',delYes:'Да, удалить',delNo:'Отмена',
+    langSectionTitle:'Язык / Language',statsTitle:'Статистика',
+    sMyadsLbl:'Мои объявления',sTotalLbl:'Всего объявлений',sGroupsLbl:'Групп',
+    detailTruck:'Машина',detailWeight:'Вес',detailCargo:'Груз',detailPrice:'Цена',detailDist:'Расстояние',detailPhone:'Телефон',
+    fill:'Пожалуйста, заполните поле',selTruck:'Выберите тип машины',liveLbl:'Активно',
+    heroPost:'Добавить объявление',heroMy:'Мои объявления',
+    profileTitle:'Профиль',
+  },
+  en:{
+    navLabels:['Search','Post','My Ads','Profile'],
+    tagline:'Logistradar Platform',statusLbl:'Live',
+    metricLabels:['Ads','Today','Groups'],
+    lblFrom:'From',lblTo:'To',
+    searchBtn:'Search',chipsTitle:'Quick routes',
+    resLabel:'results',sortNew:'↓ Newest',sortOld:'↑ Oldest',loadMore:'Load more →',
+    callBtn:'Call',copyBtn:'Copy',copied:'Copied',
+    postTitle:'Post Ad',postSub:'Post a cargo or truck ad',
+    stepLabels:['1/7','2/7','3/7','4/7','5/7','6/7','7/7'],
+    stepQ:['Where from?','Where to?','Cargo weight?','Truck type','Cargo type?','Price?','Phone number?'],
+    stepH:['City or region','Destination city or country','Kg or tons','Suitable truck type','Cargo type briefly','USD, UZS or negotiable','Buyers will contact you'],
+    sucTitle:'Ad posted!',sucBody:'Successfully added. Many buyers will contact you.',sucBtn:'View my ads →',
+    myadsTitle:'My Ads',myadsSub:'Your posted ads',
+    emptyTitle:'No ads yet',emptyBody:'You haven\'t posted any ads yet.',emptyBtn:'Post an ad',
+    delBtn:'Delete',delConfirm:'Delete this ad?',delYes:'Yes, delete',delNo:'Cancel',
+    langSectionTitle:'Language / Til',statsTitle:'Statistics',
+    sMyadsLbl:'My ads',sTotalLbl:'Total ads',sGroupsLbl:'Groups',
+    detailTruck:'Truck',detailWeight:'Weight',detailCargo:'Cargo',detailPrice:'Price',detailDist:'Distance',detailPhone:'Phone',
+    fill:'Please fill in this field',selTruck:'Select truck type',liveLbl:'Active',
+    heroPost:'Post Ad',heroMy:'My Ads',
+    profileTitle:'Profile',
+  },
+  uzk:{
+    navLabels:['Қидирув','Эълон','Эълонларим','Профил'],
+    tagline:'Логистрадар Платформаси',statusLbl:'Жонли',
+    metricLabels:['Эълон','Бугун','Гуруҳ'],
+    lblFrom:'Қаердан',lblTo:'Қаерга',
+    searchBtn:'Қидириш',chipsTitle:'Тезкор йўналишлар',
+    resLabel:'та натижа',sortNew:'↓ Янги',sortOld:'↑ Эски',loadMore:'Кўпроқ кўриш →',
+    callBtn:'Қўнғироқ',copyBtn:'Нусха',copied:'Нусха олинди',
+    postTitle:'Эълон қўшиш',postSub:'Юк ёки машина эълонини жойлаштиринг',
+    stepLabels:['1/7','2/7','3/7','4/7','5/7','6/7','7/7'],
+    stepQ:['Қаердан жўнайсиз?','Қаерга олиб борасиз?','Юк оғирлиги?','Машина тури','Қандай юк?','Нархи?','Телефон рақам?'],
+    stepH:['Шаҳар ёки вилоят киритинг','Манзил — шаҳар ёки мамлакат','Килограм ёки тонна','Юкингизга мос машина','Юк турини ёзинг','Доллар, сўм ёки келишилади','Харидорлар сиз билан боғланади'],
+    sucTitle:'Эълон жойланди!',sucBody:'Муваффақиятли қўшилди.',sucBtn:'Эълонларимни кўриш →',
+    myadsTitle:'Менинг Эълонларим',myadsSub:'Жойланган эълонларингиз',
+    emptyTitle:'Эълонлар йўқ',emptyBody:'Ҳали эълон қўшмагансиз.',emptyBtn:'Эълон қўшиш',
+    delBtn:'Ўчириш',delConfirm:'Ўчиришни тасдиқлайсизми?',delYes:'Ҳа, ўчир',delNo:'Бекор',
+    langSectionTitle:'Тил / Language',statsTitle:'Статистика',
+    sMyadsLbl:'Менинг эълонларим',sTotalLbl:'Жами эълонлар',sGroupsLbl:'Гуруҳлар',
+    detailTruck:'Машина',detailWeight:'Оғирлик',detailCargo:'Юк',detailPrice:'Нарх',detailDist:'Масофа',detailPhone:'Телефон',
+    fill:'Илтимос, майдонни тўлдиринг',selTruck:'Машина турини танланг',liveLbl:'Фаол',
+    heroPost:'Эълон қўшиш',heroMy:'Эълонларим',
+    profileTitle:'Профил',
+  }
+};
+const t=k=>TR[lang]?.[k]??k;
+function $t(id,val){const el=document.getElementById(id);if(el)el.textContent=val}
+
+// ── Profile: load & persist Telegram user data ──
+function _getUrlParam(k){
+  try{return new URLSearchParams(window.location.search).get(k)||''}catch(e){return''}
+}
+function loadProfile(){
+  const user=tg?.initDataUnsafe?.user||{};
+
+  // --- Collect fresh data from all sources ---
+  const urlFn=_getUrlParam('fn')?decodeURIComponent(_getUrlParam('fn')):'';
+  const urlUn=_getUrlParam('un');
+  const urlUid=_getUrlParam('uid');
+  const urlPh=_getUrlParam('ph')?decodeURIComponent(_getUrlParam('ph')):'';
+
+  // Fresh data wins over saved data (update on each /start)
+  const freshName=[user.first_name,user.last_name].filter(Boolean).join(' ')||urlFn;
+  const freshUname=user.username||urlUn;
+  const freshUid=user.id?String(user.id):urlUid;
+  const freshPhoto=user.photo_url||urlPh;
+
+  // Save fresh data to localStorage so it persists across sessions
+  if(freshName) localStorage.setItem('yk_tg_name', freshName);
+  if(freshUname) localStorage.setItem('yk_tg_uname', freshUname);
+  if(freshUid) localStorage.setItem('yk_tg_uid', freshUid);
+  if(freshPhoto) localStorage.setItem('yk_tg_photo', freshPhoto);
+
+  // --- Read final values (fresh or saved) ---
+  const savedName=localStorage.getItem('yk_tg_name')||'';
+  const savedUname=localStorage.getItem('yk_tg_uname')||'';
+  const savedUid=localStorage.getItem('yk_tg_uid')||'';
+  const savedPhoto=localStorage.getItem('yk_tg_photo')||'';
+
+  // Custom overrides (user edited manually)
+  const customName=localStorage.getItem('yk_custom_name');
+  const customPhoto=localStorage.getItem('yk_custom_photo');
+
+  const name=customName||savedName||'Foydalanuvchi';
+  const uname=savedUname?'@'+savedUname:'—';
+  const uid=savedUid?'ID: '+savedUid:'';
+  const photoSrc=customPhoto||savedPhoto||'';
+
+  $t('profile-name',name);
+  $t('profile-username',uname);
+  $t('profile-id',uid);
+
+  const myads=getMyAds();
+  const pb=document.getElementById('pb-ads');
+  if(pb)pb.textContent='📋 '+myads.length+' ta e\'lon';
+
+  const av=document.getElementById('profile-avatar');
+  const initial=name.charAt(0).toUpperCase()||'👤';
+  if(photoSrc){
+    av.innerHTML=`<img src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" onerror="this.parentElement.textContent='${initial}';this.remove()">`;
+  } else {
+    av.textContent=initial;
+  }
+  _renderAvatarOverlay();
+}
+
+function _renderAvatarOverlay(){
+  const av=document.getElementById('profile-avatar');
+  if(!av)return;
+  if(!av.querySelector('.av-upload-btn')){
+    const btn=document.createElement('button');
+    btn.className='av-upload-btn';btn.textContent='📷';
+    btn.onclick=(e)=>{e.stopPropagation();document.getElementById('avatar-file-input').click()};
+    av.appendChild(btn);
+  }
+}
+
+function handleAvatarChange(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  // Compress to max 300px before saving
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxSz=300;
+      const scale=Math.min(1,maxSz/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const data=c.toDataURL('image/jpeg',0.85);
+      localStorage.setItem('yk_custom_photo',data);
+      loadProfile();showToast('✓ Rasm yangilandi');haptic('medium');
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Apply translations ──
+function applyLang(){
+  const L=t('navLabels');
+  ['nl-0','nl-1','nl-2','nl-3'].forEach((id,i)=>$t(id,L[i]));
+  $t('tagline',t('tagline'));$t('status-lbl',t('statusLbl'));
+  const ml=t('metricLabels');['ml-0','ml-1','ml-2'].forEach((id,i)=>$t(id,ml[i]));
+  $t('lbl-from',t('lblFrom'));$t('lbl-to',t('lblTo'));
+  $t('btn-search-lbl',t('searchBtn'));$t('chips-title',t('chipsTitle'));
+  $t('res-label',t('resLabel'));
+  $t('sort-btn',sortDesc?t('sortNew'):t('sortOld'));
+  $t('load-more-btn',t('loadMore'));
+  $t('btn-call',t('callBtn'));$t('btn-copy',t('copyBtn'));
+  $t('post-screen-title',t('postTitle'));$t('post-screen-sub',t('postSub'));
+  const sQ=t('stepQ'),sH=t('stepH');
+  for(let i=0;i<7;i++){$t('sq-'+i,sQ[i]);$t('sh-'+i,sH[i])}
+  $t('suc-title',t('sucTitle'));$t('suc-body',t('sucBody'));$t('suc-btn',t('sucBtn'));
+  $t('myads-title',t('myadsTitle'));$t('myads-sub',t('myadsSub'));
+  $t('lang-section-title',t('langSectionTitle'));$t('stats-title',t('statsTitle'));
+  $t('s-myads-lbl',t('sMyadsLbl'));$t('s-total-lbl',t('sTotalLbl'));$t('s-groups-lbl',t('sGroupsLbl'));
+  $t('hero-post-lbl',t('heroPost'));$t('hero-my-lbl',t('heroMy'));
+  // lang options highlight
+  ['uz','uzk','ru','en'].forEach(l=>{
+    const el=document.getElementById('lo-'+l);
+    if(el)el.className='lang-option'+(lang===l?' active':'');
+  });
+  const myads=getMyAds();
+  $t('s-myads-val',myads.length+(lang==='en'?' ads':' та'));
+  $t('s-total-val',ADS.length+(lang==='en'?' ads':' та'));
+}
+
+// ── Screen nav ──
+function showScreen(id){
+  haptic();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='myads')renderMyAds();
+  if(id==='post')resetPost();
+  if(id==='profile'){applyLang();loadProfile()}
+  closeSheet();
+}
+
+// ── Clear field ──
+function clearField(inpId,clrId,listId){
+  haptic();
+  const inp=document.getElementById(inpId);
+  inp.value='';
+  document.getElementById(clrId).classList.remove('show');
+  document.getElementById(listId).classList.remove('open');
+  inp.focus();
+  doSearch();
+}
+function onRPInput(inpId,clrId,listId){
+  const val=document.getElementById(inpId).value;
+  document.getElementById(clrId).classList.toggle('show',val.length>0);
+  renderACById(inpId,listId);
+}
+
+// ── Autocomplete ──
+function bindAC(inputId,listId){
+  const inp=document.getElementById(inputId);
+  const list=document.getElementById(listId);
+  if(!inp||!list)return;
+  inp.addEventListener('input',()=>renderAC(inp,list));
+  inp.addEventListener('focus',()=>renderAC(inp,list));
+  inp.addEventListener('blur',()=>setTimeout(()=>list.classList.remove('open'),200));
+}
+function renderACById(inpId,listId){
+  const inp=document.getElementById(inpId);
+  const list=document.getElementById(listId);
+  if(inp&&list)renderAC(inp,list);
+}
+function renderAC(inp,list){
+  const q=inp.value.trim().toLowerCase();
+  const hits=CITIES.filter(c=>!q||c.n.toLowerCase().startsWith(q)||c.r.toLowerCase().includes(q)).slice(0,7);
+  if(!hits.length){list.classList.remove('open');return}
+  list.innerHTML=hits.map(c=>`<div class="autocomplete-item" onmousedown="pickCity('${c.n}','${inp.id}','${list.id}')"><span class="autocomplete-flag">${c.f}</span><span class="autocomplete-name">${c.n}</span><span class="autocomplete-region">${c.r}</span></div>`).join('');
+  list.classList.add('open');
+}
+function pickCity(name,inpId,listId){
+  const inp=document.getElementById(inpId);
+  inp.value=name;
+  document.getElementById(listId).classList.remove('open');
+  // update clear button
+  const clrId=inpId==='inp-from'?'clr-from':inpId==='inp-to'?'clr-to':null;
+  if(clrId)document.getElementById(clrId).classList.toggle('show',name.length>0);
+  doSearch();
+}
+
+// ── Swap ──
+function swapCities(){
+  haptic('medium');
+  const f=document.getElementById('inp-from'),t2=document.getElementById('inp-to');
+  [f.value,t2.value]=[t2.value,f.value];
+  const fd=document.getElementById('inp-from-display'),td=document.getElementById('inp-to-display');
+  if(fd&&td){
+    const tmp=fd.textContent;
+    fd.textContent=td.textContent;td.textContent=tmp;
+    fd.classList.toggle('empty',!f.value);td.classList.toggle('empty',!t2.value);
+  }
+  document.getElementById('clr-from').classList.toggle('show',f.value.length>0);
+  document.getElementById('clr-to').classList.toggle('show',t2.value.length>0);
+  doSearch();
+}
+
+// ── Truck filter ──
+function pickTruckFilter(chip,val){
+  haptic();activeTruck=val;
+  document.querySelectorAll('.truck-chip').forEach(c=>c.classList.remove('sel'));
+  chip.classList.add('sel');doSearch();
+}
+
+// ── Search ──
+function doSearch(){
+  haptic();
+  const from=document.getElementById('inp-from').value.trim().toLowerCase();
+  const to=document.getElementById('inp-to').value.trim().toLowerCase();
+  filtered=ADS.filter(a=>{
+    return(!from||a.fr.toLowerCase().includes(from))&&
+           (!to||a.to.toLowerCase().includes(to))&&
+           (!activeTruck||a.truck===activeTruck);
+  });
+  if(!sortDesc)filtered=[...filtered].reverse();
+  offset=0;
+  document.getElementById('results-list').innerHTML='';
+  document.getElementById('res-header').style.display='flex';
+  document.getElementById('res-count').textContent=filtered.length;
+  renderCards();
+}
+function quickRoute(from,to,chip){
+  haptic();
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
+  chip.classList.add('selected');
+  document.getElementById('inp-from').value=from;
+  document.getElementById('inp-to').value=to;
+  // update displays
+  const fd=document.getElementById('inp-from-display'),td=document.getElementById('inp-to-display');
+  if(fd){fd.textContent=from||'Shahar tanlang...';fd.classList.toggle('empty',!from)}
+  if(td){td.textContent=to||'Shahar tanlang...';td.classList.toggle('empty',!to)}
+  document.getElementById('clr-from').classList.toggle('show',from.length>0);
+  document.getElementById('clr-to').classList.toggle('show',to.length>0);
+  doSearch();
+}
+function toggleSort(){
+  haptic();sortDesc=!sortDesc;
+  $t('sort-btn',sortDesc?t('sortNew'):t('sortOld'));
+  filtered=[...filtered].reverse();
+  offset=0;document.getElementById('results-list').innerHTML='';renderCards();
+}
+function renderCards(){
+  const slice=filtered.slice(offset,offset+PAGE);
+  const container=document.getElementById('results-list');
+  slice.forEach((ad,i)=>container.insertAdjacentHTML('beforeend',buildCard(ad,offset+i+1)));
+  offset+=slice.length;
+  document.getElementById('load-more-btn').style.display=offset<filtered.length?'block':'none';
+}
+function loadMore(){haptic('medium');renderCards()}
+
+function buildCard(ad,n){
+  return`<div class="result-card">
+  <div class="rc-body">
+    <div class="rc-head">
+      <div class="rc-route">${ad.fr}<span class="rc-arrow">→</span>${ad.to}</div>
+      <div class="rc-live">${t('liveLbl')}</div>
+    </div>
+    <div class="rc-meta">
+      <span class="tag tag-neutral">🚛 ${ad.truck}</span>
+      <span class="tag tag-neutral">⚖️ ${ad.wt}</span>
+      <span class="tag tag-neutral">📦 ${ad.cargo.length>16?ad.cargo.slice(0,15)+'…':ad.cargo}</span>
+    </div>
+  </div>
+  <div class="rc-bottom">
+    <div>
+      <div class="rc-price">${ad.pr}</div>
+      <div class="rc-time">${ad.time} · ${ad.dist}</div>
+    </div>
+    <div class="rc-btns">
+      <button class="rc-call" onclick="haptic('medium');window.open('tel:${ad.phone}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.67A2 2 0 012 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14z"/></svg>
+        ${t('callBtn')}
+      </button>
+      <button class="rc-detail" onclick="openSheet(${ad.id})">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>`;
+}
+
+// ── Sheet ──
+function openSheet(id){
+  haptic('medium');
+  const ad=ADS.find(a=>a.id===id);if(!ad)return;
+  activeAd=ad;
+  document.getElementById('sh-route').textContent=ad.fr+' → '+ad.to;
+  document.getElementById('sh-time').textContent=ad.time;
+  document.getElementById('sh-details').innerHTML=`
+    <div class="detail-item"><div class="detail-icon di-blue">🚛</div><div><div class="detail-key">${t('detailTruck')}</div><div class="detail-val">${ad.truck}</div></div></div>
+    <div class="detail-item"><div class="detail-icon di-amber">⚖️</div><div><div class="detail-key">${t('detailWeight')}</div><div class="detail-val">${ad.wt}</div></div></div>
+    <div class="detail-item"><div class="detail-icon di-green">📦</div><div><div class="detail-key">${t('detailCargo')}</div><div class="detail-val">${ad.cargo}</div></div></div>
+    <div class="detail-item"><div class="detail-icon di-blue">💰</div><div><div class="detail-key">${t('detailPrice')}</div><div class="detail-val">${ad.pr}</div></div></div>
+    <div class="detail-item"><div class="detail-icon di-amber">📏</div><div><div class="detail-key">${t('detailDist')}</div><div class="detail-val">${ad.dist}</div></div></div>
+    <div class="detail-item"><div class="detail-icon di-green">📞</div><div><div class="detail-key">${t('detailPhone')}</div><div class="detail-val">${ad.phone}</div></div></div>`;
+  $t('btn-call',t('callBtn'));$t('btn-copy',t('copyBtn'));
+  document.getElementById('sheet-overlay').classList.add('open');
+  document.getElementById('bottom-sheet').classList.remove('closed');
+}
+function closeSheet(){
+  document.getElementById('sheet-overlay').classList.remove('open');
+  document.getElementById('bottom-sheet').classList.add('closed');
+}
+function callAd(){if(activeAd){haptic('medium');window.open('tel:'+activeAd.phone)}}
+function copyPhone(){
+  if(!activeAd)return;
+  navigator.clipboard?.writeText(activeAd.phone).catch(()=>{});
+  showToast(t('copied')+': '+activeAd.phone);haptic();
+}
+
+// ── Post ──
+const STEP_IDS=['p-from','p-to','p-weight',null,'p-cargo','p-price','p-phone'];
+function resetPost(){
+  currentStep=0;postData={};selectedTruck=null;
+  document.querySelectorAll('.step-body').forEach((s,i)=>s.classList.toggle('active',i===0));
+  document.querySelectorAll('.truck-option').forEach(b=>b.classList.remove('selected'));
+  STEP_IDS.forEach(id=>{if(id){const el=document.getElementById(id);if(el)el.value=''}});
+  // reset location displays
+  const fd=document.getElementById('p-from-display');if(fd){fd.textContent='Shahar tanlang...';fd.classList.add('empty')}
+  const td=document.getElementById('p-to-display');if(td){td.textContent='Shahar tanlang...';td.classList.add('empty')}
+  document.getElementById('post-success').style.display='none';
+  document.getElementById('prog-bar').style.display='flex';
+  document.getElementById('step-counter').style.display='';
+  document.getElementById('post-screen-title').style.display='';
+  document.getElementById('post-screen-sub').style.display='';
+  updateProg(0);applyLang();
+}
+function updateProg(step){
+  document.getElementById('step-counter').textContent=(step+1)+' / 7';
+  for(let i=0;i<7;i++){
+    const d=document.getElementById('pd-'+i);if(!d)continue;
+    d.className='progress-dot'+(i<step?' done':i===step?' current':'');
+  }
+}
+function stepNext(to){
+  haptic();
+  const fid=STEP_IDS[currentStep];
+  if(fid){const el=document.getElementById(fid);if(!el||!el.value.trim()){if(el.type!=='hidden')el.focus();showToast(t('fill'));return}postData[fid.replace('p-','')]=el.value.trim()}
+  if(currentStep===3&&!selectedTruck){showToast(t('selTruck'));return}
+  document.getElementById('step-'+currentStep).classList.remove('active');
+  currentStep=to;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  updateProg(currentStep);
+  const inp=document.querySelector('#step-'+currentStep+' .step-input');
+  if(inp)setTimeout(()=>inp.focus(),300);
+}
+function pickTruck(btn,name){
+  haptic();
+  document.querySelectorAll('.truck-option').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');selectedTruck=name;postData.truck=name;
+}
+function submitPost(){
+  haptic('medium');
+  const ph=document.getElementById('p-phone').value.trim();
+  if(!ph){document.getElementById('p-phone').focus();showToast(t('fill'));return}
+  postData.phone=ph;
+  const myads=getMyAds();
+  myads.unshift({id:Date.now(),fr:postData.from||'—',to:postData.to||'—',wt:postData.weight||'—',truck:postData.truck||'—',cargo:postData.cargo||'—',price:postData.price||'—',phone:ph,date:new Date().toLocaleDateString()});
+  saveMyAds(myads);
+  document.querySelectorAll('.step-body').forEach(s=>s.classList.remove('active'));
+  document.getElementById('prog-bar').style.display='none';
+  document.getElementById('step-counter').style.display='none';
+  document.getElementById('post-success').style.display='flex';
+  $t('suc-title',t('sucTitle'));$t('suc-body',t('sucBody'));$t('suc-btn',t('sucBtn'));
+  updateBadge();
+}
+
+// ── My Ads ──
+function getMyAds(){return JSON.parse(localStorage.getItem('yk_myads')||'[]')}
+function saveMyAds(arr){localStorage.setItem('yk_myads',JSON.stringify(arr))}
+function renderMyAds(){
+  const list=document.getElementById('my-ads-list');
+  const myads=getMyAds();
+  $t('myads-title',t('myadsTitle'));$t('myads-sub',t('myadsSub'));
+  if(!myads.length){
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">${t('emptyTitle')}</div><div class="empty-body">${t('emptyBody')}</div><button class="btn btn-dark btn-lg" onclick="showScreen('post')">${t('emptyBtn')}</button></div>`;
+    return;
+  }
+  list.innerHTML=myads.map(ad=>`
+    <div class="my-ad-card" id="mac-${ad.id}">
+      <div class="my-ad-header"><div class="my-ad-route">${ad.fr} → ${ad.to}</div><div class="my-ad-date">${ad.date||''}</div></div>
+      <div class="my-ad-body">
+        <div class="my-ad-tags"><span class="tag tag-primary">🚛 ${ad.truck}</span><span class="tag tag-amber">⚖️ ${ad.wt}</span><span class="tag tag-neutral">📞 ${ad.phone}</span></div>
+        <div class="my-ad-actions"><button class="btn btn-ghost-danger btn-sm" style="flex:1" onclick="askDelete(${ad.id})">${t('delBtn')}</button></div>
+        <div class="delete-confirm" id="dc-${ad.id}"><p>${t('delConfirm')}</p><div class="delete-confirm-btns"><button class="btn btn-ghost-danger btn-sm" style="flex:1" onclick="confirmDelete(${ad.id})">${t('delYes')}</button><button class="btn btn-outline btn-sm" style="flex:1" onclick="cancelDelete(${ad.id})">${t('delNo')}</button></div></div>
+      </div>
+    </div>`).join('');
+  updateBadge();
+}
+function askDelete(id){haptic();document.getElementById('dc-'+id)?.classList.add('visible')}
+function cancelDelete(id){document.getElementById('dc-'+id)?.classList.remove('visible')}
+function confirmDelete(id){haptic('medium');saveMyAds(getMyAds().filter(a=>a.id!==id));renderMyAds()}
+function updateBadge(){
+  const n=getMyAds().length;
+  const b=document.getElementById('my-badge');b.textContent=n||'';b.classList.toggle('visible',n>0);
+}
+
+// ── Language ──
+function setLanguage(l){
+  haptic();lang=l;localStorage.setItem('yk_lang',l);applyLang();
+  if(filtered.length&&document.getElementById('results-list').children.length){
+    document.getElementById('results-list').innerHTML='';offset=0;renderCards();
+  }
+  renderMyAds();
+}
+
+// ── Toast ──
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2600);
+}
+
+// ── City Picker Sheet ──
+let cpTarget=null;
+// Extract 2-letter country code from flag emoji (Regional Indicator letters)
+function flagCode(f){
+  try{return[...f].map(c=>String.fromCodePoint(c.codePointAt(0)-0x1F1E6+65)).join('')}catch(e){return'??'}
+}
+function openCityPicker(targetId,title){
+  haptic();
+  cpTarget=targetId;
+  document.getElementById('cp-title').textContent=title||'Shahar tanlang';
+  document.getElementById('cp-search-inp').value='';
+  renderCPList();
+  document.getElementById('cp-overlay').classList.add('open');
+  document.getElementById('cp-sheet').classList.add('open');
+  setTimeout(()=>document.getElementById('cp-search-inp').focus(),350);
+}
+function closeCityPicker(){
+  haptic();
+  document.getElementById('cp-overlay').classList.remove('open');
+  document.getElementById('cp-sheet').classList.remove('open');
+  cpTarget=null;
+}
+function renderCPList(){
+  const q=document.getElementById('cp-search-inp').value.trim().toLowerCase();
+  const hits=CITIES.filter(c=>!q||c.n.toLowerCase().startsWith(q)||c.r.toLowerCase().includes(q)||c.n.toLowerCase().includes(q)).slice(0,40);
+  const list=document.getElementById('cp-list');
+  list.innerHTML=hits.map(c=>`<div class="cp-item" onclick="pickCityFromSheet('${c.n.replace(/'/g,"\\'")}','${flagCode(c.f)}')"><span class="cp-badge">${flagCode(c.f)}</span><span class="cp-name">${c.n}</span><span class="cp-region">${c.r}</span></div>`).join('');
+}
+function pickCityFromSheet(name,code){
+  haptic();
+  if(!cpTarget)return;
+  document.getElementById(cpTarget).value=name;
+  // update display (search form or post form)
+  const dispId=cpTarget+'-display';
+  const disp=document.getElementById(dispId);
+  if(disp){disp.textContent=name;disp.classList.remove('empty')}
+  // update clear button
+  const clrId=cpTarget==='inp-from'?'clr-from':cpTarget==='inp-to'?'clr-to':null;
+  if(clrId)document.getElementById(clrId).classList.add('show');
+  closeCityPicker();
+  // trigger search if it's a search field
+  if(cpTarget==='inp-from'||cpTarget==='inp-to'){doSearch()}
+}
+
+// ── Clear search fields ──
+function clearSearchField(fieldId){
+  haptic();
+  document.getElementById(fieldId).value='';
+  const disp=document.getElementById(fieldId+'-display');
+  if(disp){disp.textContent='Shahar tanlang...';disp.classList.add('empty')}
+  const clrId=fieldId==='inp-from'?'clr-from':'clr-to';
+  document.getElementById(clrId).classList.remove('show');
+  doSearch();
+}
+
+// ── Profile edit ──
+function toggleNameEdit(){
+  haptic();
+  const box=document.getElementById('name-edit-box');
+  const inp=document.getElementById('name-edit-inp');
+  if(box.classList.contains('open')){
+    box.classList.remove('open');
+  } else {
+    inp.value=document.getElementById('profile-name').textContent;
+    box.classList.add('open');
+    setTimeout(()=>inp.focus(),100);
+  }
+}
+function saveProfileName(){
+  haptic('medium');
+  const val=document.getElementById('name-edit-inp').value.trim();
+  if(!val)return;
+  localStorage.setItem('yk_custom_name',val);
+  document.getElementById('profile-name').textContent=val;
+  document.getElementById('name-edit-box').classList.remove('open');
+  showToast('✓ Ism saqlandi');
+}
+
+// ── Init ──
+// inp-from / inp-to are now hidden inputs; city picker sheet handles selection
+
+applyLang();
+loadProfile();
+const totalEl=document.getElementById('total-count');
+if(totalEl)totalEl.textContent=ADS.length;
+doSearch();
+updateBadge();
+</script>
+</body>
+</html>
