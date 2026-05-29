@@ -119,6 +119,13 @@ async def delete_user_ad(ad_id: int, user_id: int):
         await db.execute("DELETE FROM user_ads WHERE id=? AND user_id=?", (ad_id, user_id))
         await db.commit()
 
+async def get_ad_by_id(ad_id: int) -> dict | None:
+    async with aiosqlite.connect(DB) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM ads WHERE id=?", (ad_id,)) as cur:
+            row = await cur.fetchone()
+            return dict(row) if row else None
+
 async def get_ad_count():
     async with aiosqlite.connect(DB) as db:
         async with db.execute("SELECT COUNT(*) FROM ads") as cur:

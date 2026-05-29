@@ -181,11 +181,10 @@ def ad_inline(ad_id: int, lang: str = "uz") -> InlineKeyboardMarkup:
 def detail_inline(ad_id: int, phone: str, link: str, lang: str = "uz") -> InlineKeyboardMarkup:
     ph_txt   = "📞 Telefon raqam" if lang == "uz" else "📞 Телефон"
     link_txt = "🔗 Xabarga o'tish" if lang == "uz" else "🔗 Перейти в чат"
-    row1 = [InlineKeyboardButton(text=ph_txt, callback_data=f"phone:{ad_id}")]
-    row2 = []
+    rows = [[InlineKeyboardButton(text=ph_txt, callback_data=f"phone:{ad_id}")]]
     if link:
-        row2.append(InlineKeyboardButton(text=link_txt, url=link))
-    return InlineKeyboardMarkup(inline_keyboard=[row1, row2] if row2 else [row1])
+        rows.append([InlineKeyboardButton(text=link_txt, url=link)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def my_ads_inline(ads: list, lang: str = "uz") -> InlineKeyboardMarkup:

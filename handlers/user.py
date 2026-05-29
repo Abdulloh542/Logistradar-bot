@@ -1,14 +1,16 @@
+import logging
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import CommandStart, StateFilter
-from aiogram.fsm.storage.memory import MemoryStorage
 
 from utils import db
 from utils import keyboards as kb
 from utils import texts as tx
 from config import Config
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -80,18 +82,20 @@ async def cmd_start(msg: Message, state: FSMContext, bot: Bot):
 @router.message(F.text.in_(BACK_TEXTS))
 async def on_back(msg: Message, state: FSMContext):
     await state.clear()
-    lg = await lang(msg.from_user.id)
+    uid   = msg.from_user.id
+    lg    = await lang(uid)
     first = msg.from_user.first_name or ""
     uname = msg.from_user.username or ""
-    await msg.answer("🏠", reply_markup=kb.main_kb(lg, msg.from_user.id, first, uname))
+    await msg.answer("🏠", reply_markup=kb.main_kb(lg, uid, first, uname))
 
 @router.message(F.text.in_(CANCEL_TEXTS))
 async def on_cancel(msg: Message, state: FSMContext):
     await state.clear()
-    lg = await lang(msg.from_user.id)
+    uid   = msg.from_user.id
+    lg    = await lang(uid)
     first = msg.from_user.first_name or ""
     uname = msg.from_user.username or ""
-    await msg.answer(tx.txt("cancelled", lg), reply_markup=kb.main_kb(lg, msg.from_user.id, first, uname))
+    await msg.answer(tx.txt("cancelled", lg), reply_markup=kb.main_kb(lg, uid, first, uname))
 
 # ─── MAIN MENU ─────────────────────────────────────────
 @router.message(F.text.in_({"🔍 Tezkor Qidiruv", "🔍 Быстрый поиск"}))
@@ -235,6 +239,13 @@ async def post_truck(msg: Message, state: FSMContext):
     await state.set_state(PostAd.cargo)
     await msg.answer(tx.txt("post_steps", lg)[4], reply_markup=kb.cancel_kb(lg))
 
+@router.message(PostAd.truck)
+async def post_truck_invalid(msg: Message, state: FSMContext):
+    lg = await lang(msg.from_user.id)
+    row = await u(msg.from_user.id)
+    hint = "⚠️ Ro'yxatdan tanlang:" if lg == "uz" else "⚠️ Выберите из списка:"
+    await msg.answer(hint, reply_markup=kb.truck_type_kb(lg, row.get("truck", "ALL")))
+
 @router.message(PostAd.cargo, ~F.text.in_(BACK_TEXTS | CANCEL_TEXTS))
 async def post_cargo(msg: Message, state: FSMContext):
     lg = await lang(msg.from_user.id)
@@ -251,28 +262,30 @@ async def post_price(msg: Message, state: FSMContext):
 
 @router.message(PostAd.phone, ~F.text.in_(BACK_TEXTS | CANCEL_TEXTS))
 async def post_phone(msg: Message, state: FSMContext):
-    uid = msg.from_user.id
-    lg  = await lang(uid)
+    uid   = msg.from_user.id
+    lg    = await lang(uid)
+    first = msg.from_user.first_name or ""
+    uname = msg.from_user.username or ""
     await state.update_data(phone=msg.text)
     data = await state.get_data()
     await state.clear()
 
     await db.add_user_ad(uid, {
-        "from_loc": data.get("from_loc",""),
-        "to_loc":   data.get("to_loc",""),
-        "weight":   data.get("weight","—"),
-        "truck":    data.get("truck","—"),
-        "cargo":    data.get("cargo","—"),
-        "price":    data.get("price","—"),
+        "from_loc": data.get("from_loc", ""),
+        "to_loc":   data.get("to_loc", ""),
+        "weight":   data.get("weight", "—"),
+        "truck":    data.get("truck", "—"),
+        "cargo":    data.get("cargo", "—"),
+        "price":    data.get("price", "—"),
         "phone":    msg.text,
     })
 
     await msg.answer(tx.txt("post_confirm", lg,
-        from_loc=data.get("from_loc",""), to_loc=data.get("to_loc",""),
-        weight=data.get("weight","—"), truck=data.get("truck","—"),
-        cargo=data.get("cargo","—"), price=data.get("price","—"),
+        from_loc=data.get("from_loc", ""), to_loc=data.get("to_loc", ""),
+        weight=data.get("weight", "—"), truck=data.get("truck", "—"),
+        cargo=data.get("cargo", "—"), price=data.get("price", "—"),
         phone=msg.text
-    ), reply_markup=kb.main_kb(lg))
+    ), reply_markup=kb.main_kb(lg, uid, first, uname))
 
 # ─── CALLBACKS ─────────────────────────────────────────
 @router.callback_query(F.data.startswith("country:"))
@@ -308,26 +321,32 @@ async def cb_dir(cb: CallbackQuery):
 
 @router.callback_query(F.data.startswith("detail:"))
 async def cb_detail(cb: CallbackQuery):
-    await cb.answer()
     uid   = cb.from_user.id
     lg    = await lang(uid)
-    ad_id = int(cb.data.split(":",1)[1])
-    ads, _ = await db.search_ads("", "ALL", limit=9999)
-    ad = next((a for a in ads if a["id"] == ad_id), None)
-    if not ad:
-        await cb.answer("Topilmadi", show_alert=True)
+    try:
+        ad_id = int(cb.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await cb.answer("Xato", show_alert=True)
         return
+    ad = await db.get_ad_by_id(ad_id)
+    if not ad:
+        await cb.answer("E'lon topilmadi" if lg == "uz" else "Объявление не найдено", show_alert=True)
+        return
+    await cb.answer()
     text = tx.format_ad_detail(ad, lg)
     await cb.message.answer(text,
-        reply_markup=kb.detail_inline(ad_id, ad.get("phone",""), ad.get("link",""), lg))
+        reply_markup=kb.detail_inline(ad_id, ad.get("phone", ""), ad.get("link", ""), lg))
 
 @router.callback_query(F.data.startswith("phone:"))
 async def cb_phone(cb: CallbackQuery):
     uid   = cb.from_user.id
     lg    = await lang(uid)
-    ad_id = int(cb.data.split(":",1)[1])
-    ads, _ = await db.search_ads("", "ALL", limit=9999)
-    ad = next((a for a in ads if a["id"] == ad_id), None)
+    try:
+        ad_id = int(cb.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await cb.answer("Xato", show_alert=True)
+        return
+    ad = await db.get_ad_by_id(ad_id)
     if not ad or not ad.get("phone"):
         await cb.answer(tx.txt("no_phone", lg), show_alert=True)
         return
@@ -336,29 +355,40 @@ async def cb_phone(cb: CallbackQuery):
 
 @router.callback_query(F.data.startswith("del:"))
 async def cb_del_ask(cb: CallbackQuery):
+    lg = await lang(cb.from_user.id)
+    try:
+        ad_id = int(cb.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await cb.answer()
+        return
     await cb.answer()
-    lg    = await lang(cb.from_user.id)
-    ad_id = int(cb.data.split(":",1)[1])
     await cb.message.edit_reply_markup(reply_markup=kb.confirm_delete_inline(ad_id, lg))
 
 @router.callback_query(F.data.startswith("delconfirm:"))
 async def cb_del_yes(cb: CallbackQuery):
-    await cb.answer()
-    uid   = cb.from_user.id
-    lg    = await lang(uid)
-    ad_id = int(cb.data.split(":",1)[1])
+    uid = cb.from_user.id
+    lg  = await lang(uid)
+    try:
+        ad_id = int(cb.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await cb.answer()
+        return
     await db.delete_user_ad(ad_id, uid)
+    await cb.answer()
     await cb.message.edit_text(tx.txt("deleted", lg))
 
 @router.callback_query(F.data == "delcancel")
 async def cb_del_no(cb: CallbackQuery):
-    await cb.answer(tx.txt("delete_cancel", await lang(cb.from_user.id)))
+    lg = await lang(cb.from_user.id)
+    await cb.answer(tx.txt("delete_cancel", lg))
 
 @router.callback_query(F.data.startswith("setlang:"))
 async def cb_lang(cb: CallbackQuery):
+    uid   = cb.from_user.id
+    first = cb.from_user.first_name or ""
+    uname = cb.from_user.username or ""
+    lg    = cb.data.split(":", 1)[1]
+    row   = await u(uid)
+    await db.save_user(uid, lg, row.get("truck", "ALL"), uname)
     await cb.answer()
-    uid  = cb.from_user.id
-    lg   = cb.data.split(":",1)[1]
-    row  = await u(uid)
-    await db.save_user(uid, lg, row.get("truck","ALL"), row.get("username",""))
-    await cb.message.answer(tx.txt("lang_set", lg), reply_markup=kb.main_kb(lg))
+    await cb.message.answer(tx.txt("lang_set", lg), reply_markup=kb.main_kb(lg, uid, first, uname))
