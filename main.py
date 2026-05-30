@@ -138,6 +138,9 @@ async def main():
     else:
         logger.info("Userbot o'chirilgan — API_ID/API_HASH .env da yo'q")
 
+    # Oldingi sessiyalarni tozalash (Conflict oldini olish)
+    await bot.delete_webhook(drop_pending_updates=True)
+
     logger.info("Bot ishga tushdi ✅")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 

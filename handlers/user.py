@@ -8,7 +8,7 @@ from aiogram.filters import CommandStart, StateFilter
 from utils import db
 from utils import keyboards as kb
 from utils import texts as tx
-from utils.db import increment_view, increment_phone
+from utils.db import increment_view, increment_phone, get_country_counts, get_top_directions
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -111,15 +111,17 @@ async def on_quick(msg: Message, state: FSMContext):
 async def on_find_truck(msg: Message, state: FSMContext):
     await state.clear()
     lg = await lang(msg.from_user.id)
+    counts = await get_country_counts()
     await msg.answer(tx.txt("find_truck_msg", lg), reply_markup=kb.back_kb(lg))
-    await msg.answer("👇", reply_markup=kb.countries_inline(lg))
+    await msg.answer("👇", reply_markup=kb.countries_inline(lg, counts))
 
 @router.message(F.text.in_({"📦 Yuk topish", "📦 Найти груз"}))
 async def on_find_cargo(msg: Message, state: FSMContext):
     await state.clear()
     lg = await lang(msg.from_user.id)
+    top_dirs = await get_top_directions(8)
     await msg.answer(tx.txt("find_cargo_msg", lg), reply_markup=kb.back_kb(lg))
-    await msg.answer("👇", reply_markup=kb.directions_inline())
+    await msg.answer("👇", reply_markup=kb.directions_inline(top_dirs))
 
 @router.message(F.text.in_({"📢 E'lon qo'shish", "📢 Добавить объявление"}))
 async def on_post(msg: Message, state: FSMContext):

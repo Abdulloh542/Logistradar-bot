@@ -42,15 +42,16 @@ TRUCKS = ["Hammasi", "Tent", "Ref", "Ref rejimsiz", "Izoterma",
           "Chakman", "Kamaz", "Mega", "Ploshadka", "Parovoz", "Tral", "Labo", "Dagruz", "Sprinter"]
 
 COUNTRIES = [
-    ("O'zbekiston", 265), ("Belarus", 1), ("Germaniya", 1), ("Gruziya", 1),
-    ("Qoraqalpoq", 3),   ("Qozog'iston", 2), ("Rossiya", 12), ("Turkiya", 1),
+    ("O'zbekiston", ""), ("Qozog'iston", ""), ("Rossiya", ""),
+    ("Qirg'iziston", ""), ("Turkmaniston", ""), ("Tojikiston", ""),
+    ("Xitoy", ""), ("Germaniya", ""), ("Turkiya", ""),
 ]
 
 DIRECTIONS = [
-    "Toshkent → Rossiya", "Toshkent → Moskva",
-    "Samarqand → Moskva", "Buxoro → Qozog'iston",
-    "Namangan → Toshkent", "Toshkent → Stambul",
-    "Toshkent → Baku",    "Toshkent → Germaniya",
+    "Toshkent → Moskva", "Toshkent → Rossiya",
+    "Samarqand → Moskva", "Buxoro → Toshkent",
+    "Shimkent → Toshkent", "Toshkent → Shimkent",
+    "Almata → Toshkent", "Toshkent → Almata",
 ]
 
 LANG = {
@@ -143,14 +144,13 @@ def truck_type_kb(lang: str = "uz", current: str = "ALL") -> ReplyKeyboardMarkup
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=rows)
 
 
-def countries_inline(lang: str = "uz") -> InlineKeyboardMarkup:
+def countries_inline(lang: str = "uz", counts: dict = None) -> InlineKeyboardMarkup:
     buttons = []
     row = []
-    for name, count in COUNTRIES:
-        row.append(InlineKeyboardButton(
-            text=f"{name} — {count}",
-            callback_data=f"country:{name}"
-        ))
+    for name, _ in COUNTRIES:
+        cnt = (counts or {}).get(name, 0)
+        label = f"{name} ({cnt})" if cnt else name
+        row.append(InlineKeyboardButton(text=label, callback_data=f"country:{name}"))
         if len(row) == 2:
             buttons.append(row)
             row = []
@@ -159,10 +159,11 @@ def countries_inline(lang: str = "uz") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def directions_inline() -> InlineKeyboardMarkup:
+def directions_inline(top_dirs: list = None) -> InlineKeyboardMarkup:
+    dirs = top_dirs if top_dirs else DIRECTIONS
     buttons = []
     row = []
-    for d in DIRECTIONS:
+    for d in dirs:
         row.append(InlineKeyboardButton(text=d, callback_data=f"dir:{d}"))
         if len(row) == 2:
             buttons.append(row)

@@ -90,6 +90,33 @@ async def save_user(user_id: int, lang: str = "uz", truck: str = "ALL", username
         """, (user_id, lang, truck, username))
         await db.commit()
 
+async def get_country_counts() -> dict:
+    """Returns {country_keyword: count} from ads table."""
+    from utils.keyboards import COUNTRIES
+    counts = {}
+    async with aiosqlite.connect(DB) as db:
+        for name, _ in COUNTRIES:
+            async with db.execute(
+                "SELECT COUNT(*) FROM ads WHERE LOWER(from_loc) LIKE ? OR LOWER(to_loc) LIKE ?",
+                (f"%{name.lower()}%", f"%{name.lower()}%")
+            ) as cur:
+                counts[name] = (await cur.fetchone())[0]
+    return counts
+
+
+async def get_top_directions(limit: int = 8) -> list:
+    """Returns top N 'from_loc → to_loc' pairs by frequency."""
+    async with aiosqlite.connect(DB) as db:
+        async with db.execute(
+            """SELECT from_loc||' → '||to_loc as dir, COUNT(*) as cnt
+               FROM ads WHERE from_loc != '' AND to_loc != ''
+               GROUP BY from_loc, to_loc ORDER BY cnt DESC LIMIT ?""",
+            (limit,)
+        ) as cur:
+            rows = await cur.fetchall()
+    return [r[0] for r in rows]
+
+
 async def search_ads(query: str = "", truck: str = "ALL", limit: int = 10, offset: int = 0):
     async with aiosqlite.connect(DB) as db:
         db.row_factory = aiosqlite.Row

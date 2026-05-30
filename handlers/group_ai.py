@@ -8,6 +8,7 @@ import json
 import logging
 import re
 import asyncio
+import time
 from aiogram import Router, F
 from aiogram.types import Message
 
@@ -70,38 +71,49 @@ Har zayafka uchun maydonlar:
 Misol natija: [{"from_loc":"Toshkent","to_loc":"Moskva","weight":"20t","truck":"Tent","cargo":"paxta","price":"800$","phone":"+998901234567"}]"""
 
 
+# Rate limiter: max 1 request per 2 seconds to avoid Groq 429
+_ai_lock = asyncio.Semaphore(1)
+_last_ai_call: float = 0.0
+
+
 async def parse_with_ai(text: str) -> list[dict]:
     """Use Groq LLaMA to extract zayafkas from message text."""
     if not Config.GROQ_API_KEY:
-        logger.warning("GROQ_API_KEY not set")
         return []
-    try:
-        from groq import Groq
-        client = Groq(api_key=Config.GROQ_API_KEY)
+    global _last_ai_call
+    async with _ai_lock:
+        # Ensure at least 2s between calls
+        wait = 2.0 - (time.time() - _last_ai_call)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        try:
+            from groq import Groq
+            client = Groq(api_key=Config.GROQ_API_KEY)
 
-        def _call():
-            return client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": text[:2000]},
-                ],
-                max_tokens=1000,
-                temperature=0.1,
-            )
+            def _call():
+                return client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": text[:1500]},
+                    ],
+                    max_tokens=600,
+                    temperature=0.1,
+                )
 
-        resp = await asyncio.to_thread(_call)
-        raw = resp.choices[0].message.content.strip()
+            resp = await asyncio.to_thread(_call)
+            _last_ai_call = time.time()
+            raw = resp.choices[0].message.content.strip()
 
-        # Extract JSON array
-        m = re.search(r'\[.*\]', raw, re.DOTALL)
-        if not m:
-            return []
-        data = json.loads(m.group(0))
-        if isinstance(data, list):
-            return data
-    except Exception as e:
-        logger.warning(f"AI parse error: {e}")
+            m = re.search(r'\[.*\]', raw, re.DOTALL)
+            if not m:
+                return []
+            data = json.loads(m.group(0))
+            if isinstance(data, list):
+                return data
+        except Exception as e:
+            logger.warning(f"AI parse error: {e}")
+            _last_ai_call = time.time()
     return []
 
 
