@@ -8,7 +8,7 @@ from aiogram.filters import CommandStart, StateFilter
 from utils import db
 from utils import keyboards as kb
 from utils import texts as tx
-from utils.db import increment_view, increment_phone, get_country_counts, get_top_directions
+from utils.db import increment_view, increment_phone, get_country_counts, get_top_directions, extract_phone
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -341,6 +341,19 @@ async def cb_detail(cb: CallbackQuery):
 
     # Show original group message text if available, else formatted
     raw = (ad.get("raw_text") or "").strip()
+
+    # Fallback: extract phone from raw_text if stored phone is empty
+    phone = (ad.get("phone") or "").strip()
+    if not phone and raw:
+        phone = extract_phone(raw)
+        if phone:
+            # Save extracted phone back to DB
+            import aiosqlite
+            from config import Config
+            async with aiosqlite.connect(Config.DB_PATH) as dbc:
+                await dbc.execute("UPDATE ads SET phone=? WHERE id=?", (phone, ad_id))
+                await dbc.commit()
+
     if raw:
         vc = (ad.get("view_count") or 0) + 1
         pc = ad.get("phone_count") or 0
@@ -350,7 +363,7 @@ async def cb_detail(cb: CallbackQuery):
         text = tx.format_ad_detail(ad, lg)
 
     await cb.message.answer(text,
-        reply_markup=kb.detail_inline(ad_id, ad.get("phone", ""), ad.get("link", ""), lg))
+        reply_markup=kb.detail_inline(ad_id, phone, ad.get("link", ""), lg))
 
 @router.callback_query(F.data.startswith("phone:"))
 async def cb_phone(cb: CallbackQuery):
@@ -362,12 +375,27 @@ async def cb_phone(cb: CallbackQuery):
         await cb.answer("Xato", show_alert=True)
         return
     ad = await db.get_ad_by_id(ad_id)
-    if not ad or not ad.get("phone"):
+    if not ad:
+        await cb.answer(tx.txt("no_phone", lg), show_alert=True)
+        return
+
+    phone = (ad.get("phone") or "").strip()
+    # Fallback: extract from raw_text
+    if not phone:
+        phone = extract_phone(ad.get("raw_text") or "")
+        if phone:
+            import aiosqlite
+            from config import Config
+            async with aiosqlite.connect(Config.DB_PATH) as dbc:
+                await dbc.execute("UPDATE ads SET phone=? WHERE id=?", (phone, ad_id))
+                await dbc.commit()
+
+    if not phone:
         await cb.answer(tx.txt("no_phone", lg), show_alert=True)
         return
     await cb.answer()
     await increment_phone(ad_id)
-    await cb.message.answer(tx.txt("phone_reveal", lg, phone=ad["phone"]))
+    await cb.message.answer(tx.txt("phone_reveal", lg, phone=phone))
 
 @router.callback_query(F.data.startswith("del:"))
 async def cb_del_ask(cb: CallbackQuery):

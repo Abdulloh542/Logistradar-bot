@@ -66,7 +66,8 @@ Har zayafka uchun maydonlar:
   (mos kelmasa bo'sh "")
 - cargo: yuk nomi ("kaolin", "meva" yoki "")
 - price: narx ("1200$", "kelishiladi" yoki "")
-- phone: telefon raqam yoki ""
+- phone: telefon raqam. +998 prefiksi bo'lmasa ham yoz (masalan "905976525" yoki "90 597 65 25" → "+998905976525"). Bo'sh bo'lsa ""
+- Bitta xabarda BARCHA zayafkalar uchun bittadan phone bo'ladi (oxirida yozilgan raqam hammaga tegishli)
 
 Misol natija: [{"from_loc":"Toshkent","to_loc":"Moskva","weight":"20t","truck":"Tent","cargo":"paxta","price":"800$","phone":"+998901234567"}]"""
 
@@ -97,7 +98,7 @@ async def parse_with_ai(text: str) -> list[dict]:
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": text[:1500]},
                     ],
-                    max_tokens=600,
+                    max_tokens=2000,
                     temperature=0.1,
                 )
 

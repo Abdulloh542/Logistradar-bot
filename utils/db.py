@@ -1,7 +1,25 @@
+import re
 import aiosqlite
 from config import Config
 
 DB = Config.DB_PATH
+
+
+def extract_phone(text: str) -> str:
+    """Extract Uzbek phone number from text. Returns +998XXXXXXXXX or ''."""
+    if not text:
+        return ""
+    # Remove spaces/dashes for matching
+    clean = re.sub(r'[\s\-\(\)]', '', text)
+    # +998XXXXXXXXX or 998XXXXXXXXX
+    m = re.search(r'\+?(998)([0-9]{9})', clean)
+    if m:
+        return f"+998{m.group(2)}"
+    # 9-digit starting with 9 (Uzbek mobile: 90,91,93,94,95,97,98,99,33,50,77,88)
+    m = re.search(r'\b(9[0-9]{8})\b', clean)
+    if m:
+        return f"+998{m.group(1)}"
+    return ""
 
 async def init_db():
     async with aiosqlite.connect(DB) as db:
