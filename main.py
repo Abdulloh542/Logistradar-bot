@@ -40,7 +40,7 @@ async def main():
     dp.include_router(user.router)
 
     # Userbot (agar API sozlangan bo'lsa)
-    if Config.API_ID and Config.API_HASH and Config.PHONE:
+    if Config.API_ID and Config.API_HASH:
         try:
             from handlers.group import start_userbot
             asyncio.create_task(start_userbot())
@@ -48,7 +48,7 @@ async def main():
         except ImportError:
             logger.warning("Telethon o'rnatilmagan, userbot ishlamaydi")
     else:
-        logger.info("Userbot o'chirilgan — API_ID/API_HASH/PHONE .env da yo'q")
+        logger.info("Userbot o'chirilgan — API_ID/API_HASH .env da yo'q")
 
     logger.info("Bot ishga tushdi ✅")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
