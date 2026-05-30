@@ -12,6 +12,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 from config import Config
 from handlers import user
@@ -88,17 +89,27 @@ async def static_file(request: web.Request) -> web.Response:
     )
 
 
-async def start_web_server():
-    port = int(os.environ.get("PORT", 7777))
-    app  = web.Application()
+def _build_app(dp: Dispatcher, bot: Bot) -> web.Application:
+    app = web.Application()
     app.router.add_get("/api/ads", api_ads)
-    app.router.add_get("/",            static_file)
-    app.router.add_get("/{path:.+}",   static_file)
+    # Webhook endpoint for bot updates
+    webhook_path = f"/bot{Config.BOT_TOKEN}"
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
+    setup_application(app, dp, bot=bot)
+    app.router.add_get("/",          static_file)
+    app.router.add_get("/{path:.+}", static_file)
+    return app
+
+
+async def start_web_server(dp: Dispatcher, bot: Bot):
+    port = int(os.environ.get("PORT", 8888))
+    app  = _build_app(dp, bot)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
+    site = web.TCPSite(runner, "0.0.0.0", port, reuse_address=True, reuse_port=False)
     await site.start()
     logger.info(f"Webapp server started on port {port} ✅")
+    return port
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -114,8 +125,7 @@ async def main():
     await add_monitored_group(1159400110, "Logistika guruhi 2", 0)
     await add_monitored_group(1489222508, "YUK TASHISH XIZMATLARI", 0)
 
-    # Webapp server (same process)
-    await start_web_server()
+    # Bot, dp, webapp all initialized together below
 
     # Bot
     bot = Bot(
@@ -138,11 +148,23 @@ async def main():
     else:
         logger.info("Userbot o'chirilgan — API_ID/API_HASH .env da yo'q")
 
-    # Oldingi sessiyalarni tozalash (Conflict oldini olish)
-    await bot.delete_webhook(drop_pending_updates=True)
+    # Webapp server (also hosts webhook endpoint)
+    port = await start_web_server(dp, bot)
 
-    logger.info("Bot ishga tushdi ✅")
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    # Set webhook — this disables Render's polling automatically
+    webapp_url = Config.WEBAPP_URL
+    if webapp_url:
+        webhook_url = f"{webapp_url}/bot{Config.BOT_TOKEN}"
+        await bot.set_webhook(webhook_url, drop_pending_updates=True)
+        logger.info(f"Webhook set: {webhook_url} ✅")
+        logger.info("Bot ishga tushdi ✅ (webhook mode)")
+        # Keep running (aiohttp server handles everything)
+        await asyncio.Event().wait()
+    else:
+        # Fallback: polling mode (no public URL)
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Bot ishga tushdi ✅ (polling mode)")
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
 if __name__ == "__main__":
