@@ -73,6 +73,28 @@ Har zayafka uchun maydonlar:
 Misol natija: [{"from_loc":"Toshkent","to_loc":"Moskva","weight":"20t","truck":"Tent","cargo":"paxta","price":"800$","phone":"+998901234567"}]"""
 
 
+def _fix_phones(ads: list) -> list:
+    """Ensure all phones start with +998 (Uzbek prefix)."""
+    for ad in ads:
+        p = re.sub(r'[\s\-\(\)]', '', ad.get("phone") or "")
+        if not p:
+            continue
+        # Already correct
+        if p.startswith("+998") and len(p) == 13:
+            ad["phone"] = p
+            continue
+        # Strip any wrong prefix (+7, +995, etc.)
+        digits = re.sub(r'^\+?\d{1,3}', '', p) if p.startswith('+') else p
+        # 9-digit Uzbek number
+        m = re.search(r'(9[0-9]{8})', digits)
+        if m:
+            ad["phone"] = f"+998{m.group(1)}"
+        elif re.match(r'^998[0-9]{9}$', p):
+            ad["phone"] = f"+{p}"
+        # else leave as-is
+    return ads
+
+
 # Rate limiter: max 1 request per 2 seconds to avoid Groq 429
 _ai_lock = asyncio.Semaphore(1)
 _last_ai_call: float = 0.0
@@ -94,12 +116,12 @@ async def parse_with_ai(text: str) -> list[dict]:
 
             def _call():
                 return client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": text[:1500]},
+                        {"role": "user", "content": text[:3000]},
                     ],
-                    max_tokens=2000,
+                    max_tokens=4000,
                     temperature=0.1,
                 )
 
@@ -112,7 +134,7 @@ async def parse_with_ai(text: str) -> list[dict]:
                 return []
             data = json.loads(m.group(0))
             if isinstance(data, list):
-                return data
+                return _fix_phones(data)
         except Exception as e:
             logger.warning(f"AI parse error: {e}")
             _last_ai_call = time.time()
