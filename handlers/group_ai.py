@@ -51,10 +51,11 @@ SYSTEM_PROMPT = """Sen logistika zayafkalarini (jo'natish/yetkazib berish buyurt
 Foydalanuvchi Telegram guruh xabarini beradi. Sen barcha logistika zayafkalarini JSON massiv sifatida qaytarasan.
 
 Qoidalar:
-1. Imlo xatolarini tuzat: "teshent"→"Toshkent", "maskvaga"→"Moskva", "angren"→"Angren" va h.k.
+1. Imlo xatolarini tuzat: "teshent"→"Toshkent", "maskvaga"→"Moskva", "anjijin"→"Andijon" va h.k.
 2. Bitta xabarda bir nechta zayafka bo'lsa — BARCHASINI ajrat
-3. Logistika zayafkasi emas deb hisoblasang — bo'sh massiv [] qaytar
-4. FAQAT JSON massiv qaytar, boshqa matn yozma
+3. Yo'nalishni aniqlash: "КАШКАДАРЁ\nОмск" = Qashqadaryo → Omsk (birinchi shahar from_loc, ikkinchi to_loc). "-" yoki "→" belgisi bo'lsa: "Toshkent-Moskva" = Toshkent → Moskva
+4. Logistika zayafkasi emas deb hisoblasang — bo'sh massiv [] qaytar
+5. FAQAT JSON massiv qaytar, boshqa matn yozma
 
 Har zayafka uchun maydonlar:
 - from_loc: jo'nab ketish joyi
