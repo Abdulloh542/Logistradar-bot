@@ -89,7 +89,7 @@ async def static_file(request: web.Request) -> web.Response:
 
 
 async def start_web_server():
-    port = int(os.environ.get("PORT", 9876))
+    port = int(os.environ.get("PORT", 7777))
     app  = web.Application()
     app.router.add_get("/api/ads", api_ads)
     app.router.add_get("/",            static_file)

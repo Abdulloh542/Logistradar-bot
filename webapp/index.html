@@ -1223,6 +1223,7 @@ function showScreen(id){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+id).classList.add('active');
   document.getElementById('nav-'+id).classList.add('active');
+  if(id==='feed')loadFeed(1);
   if(id==='myads')renderMyAds();
   if(id==='post')resetPost();
   if(id==='profile'){applyLang();loadProfile()}
@@ -1587,14 +1588,14 @@ function saveProfileName(){
 }
 
 // ── Init ──
-// inp-from / inp-to are now hidden inputs; city picker sheet handles selection
-
 applyLang();
 loadProfile();
 const totalEl=document.getElementById('total-count');
 if(totalEl)totalEl.textContent=ADS.length;
 doSearch();
 updateBadge();
+// Load feed on startup
+initFeed();
 </script>
 </body>
 </html>
