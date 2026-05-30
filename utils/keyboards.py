@@ -38,7 +38,8 @@ def _build_webapp_url(user_id: int = 0, first_name: str = "", username: str = ""
     return base
 
 TRUCKS = ["Hammasi", "Tent", "Ref", "Ref rejimsiz", "Izoterma",
-          "Kichkina Isuzu", "Katta Isuzu", "Bortovoy", "Konteyner"]
+          "Kichkina Isuzu", "Katta Isuzu", "Bortovoy", "Konteyner",
+          "Chakman", "Kamaz", "Mega", "Ploshadka", "Parovoz", "Tral", "Labo", "Dagruz", "Sprinter"]
 
 COUNTRIES = [
     ("O'zbekiston", 265), ("Belarus", 1), ("Germaniya", 1), ("Gruziya", 1),
@@ -181,9 +182,12 @@ def ad_inline(ad_id: int, lang: str = "uz") -> InlineKeyboardMarkup:
 def detail_inline(ad_id: int, phone: str, link: str, lang: str = "uz") -> InlineKeyboardMarkup:
     ph_txt   = "📞 Telefon raqam" if lang == "uz" else "📞 Телефон"
     link_txt = "🔗 Xabarga o'tish" if lang == "uz" else "🔗 Перейти в чат"
-    rows = [[InlineKeyboardButton(text=ph_txt, callback_data=f"phone:{ad_id}")]]
+    rows = []
+    # "Xabarga o'tish" first when link is available
     if link:
         rows.append([InlineKeyboardButton(text=link_txt, url=link)])
+    # Phone button always shown (shows phone via callback)
+    rows.append([InlineKeyboardButton(text=ph_txt, callback_data=f"phone:{ad_id}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

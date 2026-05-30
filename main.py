@@ -7,8 +7,9 @@ from aiogram.enums import ParseMode
 
 from config import Config
 from handlers import user
-from utils.db import init_db
-from utils.seed import seed_if_empty
+from handlers import admin
+from handlers import group_ai
+from utils.db import init_db, add_monitored_group
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,7 +24,10 @@ async def main():
 
     # DB init
     await init_db()
-    await seed_if_empty()
+
+    # Seed default monitored groups (sinov guruhlar)
+    await add_monitored_group(1411032261, "Logistika guruhi 1", 0)
+    await add_monitored_group(1159400110, "Logistika guruhi 2", 0)
 
     # Bot
     bot = Bot(
@@ -31,6 +35,8 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher(storage=MemoryStorage())
+    dp.include_router(admin.router)
+    dp.include_router(group_ai.router)
     dp.include_router(user.router)
 
     # Userbot (agar API sozlangan bo'lsa)

@@ -8,6 +8,7 @@ from aiogram.filters import CommandStart, StateFilter
 from utils import db
 from utils import keyboards as kb
 from utils import texts as tx
+from utils.db import increment_view, increment_phone
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,8 @@ MENU_TEXTS   = {
     "🚗 Avto turini o'zgartirish", "🚗 Изменить тип авто",
 }
 TRUCK_TEXTS = {"Hammasi", "Все", "Tent", "Ref", "Ref rejimsiz", "Izoterma",
-               "Kichkina Isuzu", "Katta Isuzu", "Bortovoy", "Konteyner"}
+               "Kichkina Isuzu", "Katta Isuzu", "Bortovoy", "Konteyner",
+               "Chakman", "Kamaz", "Mega", "Ploshadka", "Parovoz", "Tral", "Labo", "Dagruz", "Sprinter"}
 
 async def _get_photo_url(bot: Bot, uid: int) -> str:
     """Get user's Telegram profile photo URL via Bot API."""
@@ -333,7 +335,18 @@ async def cb_detail(cb: CallbackQuery):
         await cb.answer("E'lon topilmadi" if lg == "uz" else "Объявление не найдено", show_alert=True)
         return
     await cb.answer()
-    text = tx.format_ad_detail(ad, lg)
+    await increment_view(ad_id)
+
+    # Show original group message text if available, else formatted
+    raw = (ad.get("raw_text") or "").strip()
+    if raw:
+        vc = (ad.get("view_count") or 0) + 1
+        pc = ad.get("phone_count") or 0
+        src = ad.get("source") or "Telegram"
+        text = f"{raw}\n\n👁 {vc}   📞 {pc}   📡 {src}"
+    else:
+        text = tx.format_ad_detail(ad, lg)
+
     await cb.message.answer(text,
         reply_markup=kb.detail_inline(ad_id, ad.get("phone", ""), ad.get("link", ""), lg))
 
@@ -351,6 +364,7 @@ async def cb_phone(cb: CallbackQuery):
         await cb.answer(tx.txt("no_phone", lg), show_alert=True)
         return
     await cb.answer()
+    await increment_phone(ad_id)
     await cb.message.answer(tx.txt("phone_reveal", lg, phone=ad["phone"]))
 
 @router.callback_query(F.data.startswith("del:"))

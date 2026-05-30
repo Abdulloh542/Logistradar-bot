@@ -33,7 +33,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(-
 @keyframes sIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* DARK PILL NAV */
-.bottom-nav{position:fixed;bottom:var(--nav-bot);left:var(--nav-side);right:var(--nav-side);height:var(--nav-h);background:var(--dark);border-radius:20px;display:grid;grid-template-columns:repeat(4,1fr);z-index:50;box-shadow:0 8px 32px rgba(0,0,0,.3),0 2px 8px rgba(0,0,0,.15);overflow:hidden}
+.bottom-nav{position:fixed;bottom:var(--nav-bot);left:var(--nav-side);right:var(--nav-side);height:var(--nav-h);background:var(--dark);border-radius:20px;display:grid;grid-template-columns:repeat(5,1fr);z-index:50;box-shadow:0 8px 32px rgba(0,0,0,.3),0 2px 8px rgba(0,0,0,.15);overflow:hidden}
 .nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;cursor:pointer;color:rgba(255,255,255,.38);font-size:10px;font-weight:600;font-family:inherit;padding:8px 4px 6px;position:relative;transition:color .15s,transform .2s cubic-bezier(.34,1.56,.64,1)}
 .nav-item:active{transform:scale(.82)}
 .nav-item.active{color:#fff}
@@ -369,7 +369,11 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(-
 
 <!-- ══ NAV ══ -->
 <nav class="bottom-nav" style="order:99">
-  <button class="nav-item active" id="nav-search" onclick="showScreen('search')">
+  <button class="nav-item active" id="nav-feed" onclick="showScreen('feed')">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>Yangi</span>
+  </button>
+  <button class="nav-item" id="nav-search" onclick="showScreen('search')">
     <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <span id="nl-0">Qidiruv</span>
   </button>
@@ -388,8 +392,40 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(-
   </button>
 </nav>
 
+<!-- ══ FEED (yangi zayafkalar guruhdan) ══ -->
+<div class="screen active" id="screen-feed">
+  <div style="background:var(--dark);padding:16px 14px 14px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:18px;font-weight:800;color:#fff">🚛 Yangi Zayafkalar</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px" id="feed-sub">Guruhlardan real vaqtda</div>
+    </div>
+    <button onclick="loadFeed(1)" style="background:rgba(255,255,255,.12);border:none;border-radius:12px;padding:8px 14px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">↻ Yangilash</button>
+  </div>
+  <!-- search bar -->
+  <div style="padding:10px 12px 0;flex-shrink:0">
+    <div style="position:relative">
+      <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--text-4);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="feed-search" type="text" placeholder="Shahar, yo'nalish qidirish..." style="width:100%;padding:11px 12px 11px 38px;border-radius:12px;border:none;background:var(--surface);font-family:inherit;font-size:14px;outline:none;box-shadow:var(--sh-sm)" oninput="feedSearchDebounce()" />
+    </div>
+  </div>
+  <!-- truck filter -->
+  <div style="padding:8px 12px 0;overflow-x:auto;white-space:nowrap;flex-shrink:0">
+    <span id="feed-truck-chips"></span>
+  </div>
+  <!-- results count -->
+  <div style="padding:8px 14px 4px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between">
+    <div id="feed-count" style="font-size:12px;color:var(--text-3);font-weight:500"></div>
+  </div>
+  <!-- list -->
+  <div id="feed-list" style="padding:0 12px;display:flex;flex-direction:column;gap:8px;flex:1"></div>
+  <!-- load more -->
+  <div style="padding:10px 12px;flex-shrink:0;text-align:center">
+    <button id="feed-more-btn" onclick="feedLoadMore()" style="display:none;width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer">Ko'proq ko'rsatish</button>
+  </div>
+</div>
+
 <!-- ══ SEARCH ══ -->
-<div class="screen active" id="screen-search">
+<div class="screen" id="screen-search">
   <div class="hero-card">
     <div class="hero-top">
       <div class="hero-logo">
@@ -767,6 +803,121 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(-
 const tg=window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand()}
 function haptic(t='light'){tg?.HapticFeedback?.impactOccurred(t)}
+
+// ── API base URL (same origin) ──
+const API_BASE = window.location.origin;
+
+// ── FEED ──
+const TRUCKS_LIST=['ALL','Tent','Ref','Ref rejimsiz','Izoterma','Kichkina Isuzu','Katta Isuzu','Bortovoy','Konteyner','Chakman','Kamaz','Mega','Ploshadka','Parovoz','Tral','Labo','Dagruz','Sprinter'];
+let feedPage=1, feedTruck='ALL', feedQ='', feedTotal=0, feedLoading=false;
+let feedDebTimer=null;
+
+function renderTruckChips(){
+  const c=document.getElementById('feed-truck-chips');
+  c.innerHTML=TRUCKS_LIST.map(t=>`<button onclick="setFeedTruck('${t}')" id="fchip-${t.replace(/ /g,'_')}"
+    style="display:inline-block;margin-right:6px;padding:5px 13px;border-radius:20px;border:1.5px solid var(--border);
+    background:${t===feedTruck?'var(--dark)':'var(--surface)'};color:${t===feedTruck?'#fff':'var(--text-2)'};
+    font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">${t==='ALL'?'Hammasi':t}</button>`).join('');
+}
+
+function setFeedTruck(t){feedTruck=t;feedPage=1;renderTruckChips();loadFeed(1)}
+
+function feedSearchDebounce(){
+  clearTimeout(feedDebTimer);
+  feedDebTimer=setTimeout(()=>{feedQ=document.getElementById('feed-search').value;feedPage=1;loadFeed(1)},400);
+}
+
+function flagFor(city){
+  const f={'Toshkent':'🇺🇿','Samarqand':'🇺🇿','Buxoro':'🇺🇿','Namangan':'🇺🇿','Andijon':'🇺🇿',
+    'Fargona':'🇺🇿','Nukus':'🇺🇿','Termiz':'🇺🇿','Urganch':'🇺🇿','Qarshi':'🇺🇿',
+    'Moskva':'🇷🇺','Rossiya':'🇷🇺','Peterburg':'🇷🇺',
+    'Qozogiston':'🇰🇿','Kazakhstan':'🇰🇿','Bishkek':'🇰🇬',
+    'Stambul':'🇹🇷','Istanbul':'🇹🇷','Germaniya':'🇩🇪','Belarus':'🇧🇾',
+    'Gruziya':'🇬🇪','Baku':'🇦🇿','Ozarbayjon':'🇦🇿'};
+  for(const k in f) if(city&&city.toLowerCase().includes(k.toLowerCase())) return f[k];
+  return '🏳';
+}
+
+function timeAgo(dtStr){
+  if(!dtStr) return '';
+  const d=new Date(dtStr.replace(' ','T')+'Z');
+  const mins=Math.floor((Date.now()-d)/60000);
+  if(mins<1) return 'Hozirgina';
+  if(mins<60) return `${mins} daq oldin`;
+  const h=Math.floor(mins/60);
+  if(h<24) return `${h} soat oldin`;
+  return `${Math.floor(h/24)} kun oldin`;
+}
+
+function renderFeedCard(ad){
+  const ff=flagFor(ad.from_loc), ft=flagFor(ad.to_loc);
+  const rows=[];
+  if(ad.weight) rows.push(`<span>⚖️ ${ad.weight}</span>`);
+  if(ad.truck)  rows.push(`<span>🚚 ${ad.truck}</span>`);
+  if(ad.cargo)  rows.push(`<span>📦 ${ad.cargo}</span>`);
+  if(ad.price)  rows.push(`<span>💰 ${ad.price}</span>`);
+  const meta = rows.join('<span style="color:var(--border);margin:0 4px">·</span>');
+  const ago  = timeAgo(ad.created);
+  const link = ad.link || '';
+  return `<div class="result-card" style="border-radius:14px;overflow:hidden">
+    <div class="rc-body">
+      <div style="font-size:15px;font-weight:800;color:var(--text-1);margin-bottom:8px">
+        ${ff} ${ad.from_loc} → ${ft} ${ad.to_loc}
+      </div>
+      <div style="font-size:12px;color:var(--text-2);line-height:1.8;flex-wrap:wrap;display:flex;gap:4px 0">${meta||'—'}</div>
+      <div style="font-size:11px;color:var(--text-4);margin-top:8px">⏱ ${ago} · 📡 ${ad.source||'Telegram'}</div>
+    </div>
+    <div style="display:flex;border-top:1px solid var(--sep)">
+      ${link?`<a href="${link}" target="_blank" style="flex:1;padding:11px;text-align:center;font-size:13px;font-weight:700;color:var(--primary);text-decoration:none;border-right:1px solid var(--sep)">🔗 Xabarga o'tish</a>`:''}
+      <button onclick="feedShowPhone(${ad.id},this)" data-phone="${ad.phone||''}"
+        style="flex:1;padding:11px;border:none;background:none;font-size:13px;font-weight:700;color:var(--dark);cursor:pointer;font-family:inherit">
+        📞 Telefon
+      </button>
+    </div>
+  </div>`;
+}
+
+function feedShowPhone(id, btn){
+  const ph=btn.dataset.phone;
+  if(!ph){btn.textContent='📵 Raqam yo\'q';return}
+  btn.innerHTML=`<a href="tel:${ph}" style="color:var(--dark);text-decoration:none">📞 ${ph}</a>`;
+  haptic('medium');
+}
+
+async function loadFeed(page=1){
+  if(feedLoading) return;
+  feedLoading=true;
+  const list=document.getElementById('feed-list');
+  const moreBtn=document.getElementById('feed-more-btn');
+  if(page===1){list.innerHTML='<div style="padding:30px;text-align:center;color:var(--text-4)">⏳ Yuklanmoqda...</div>';}
+  try{
+    const params=new URLSearchParams({page,limit:20,q:feedQ,truck:feedTruck});
+    const r=await fetch(`${API_BASE}/api/ads?${params}`);
+    const d=await r.json();
+    feedTotal=d.total; feedPage=page;
+    if(page===1) list.innerHTML='';
+    if(!d.ads||!d.ads.length){
+      if(page===1) list.innerHTML='<div style="padding:40px 20px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📭</div><div style="font-weight:700;margin-bottom:6px">Hozircha zayafka yo\'q</div><div style="font-size:13px;color:var(--text-3)">Botni guruhlarga qo\'shing</div></div>';
+      moreBtn.style.display='none';
+    } else {
+      d.ads.forEach(ad=>{list.insertAdjacentHTML('beforeend',renderFeedCard(ad));});
+      const shown=list.children.length;
+      document.getElementById('feed-count').textContent=`${feedTotal} ta zayafka topildi`;
+      moreBtn.style.display=shown<feedTotal?'block':'none';
+      moreBtn.textContent=`Ko'proq ko'rsatish (${shown} / ${feedTotal})`;
+    }
+  }catch(e){
+    list.innerHTML=`<div style="padding:30px;text-align:center;color:var(--danger)">❌ Ulanish xatosi</div>`;
+  }
+  feedLoading=false;
+}
+
+function feedLoadMore(){loadFeed(feedPage+1)}
+
+function initFeed(){
+  renderTruckChips();
+  loadFeed(1);
+}
 
 // ── Cities ──
 const CITIES=[
