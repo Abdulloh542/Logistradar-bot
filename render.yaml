@@ -1,5 +1,5 @@
 services:
-  - type: worker
+  - type: web
     name: logistradar-bot
     runtime: python
     buildCommand: pip install -r requirements.txt
@@ -8,4 +8,18 @@ services:
       - key: BOT_TOKEN
         sync: false
       - key: WEBAPP_URL
+        value: https://logistradar-bot.onrender.com
+      - key: API_ID
         sync: false
+      - key: API_HASH
+        sync: false
+      - key: SESSION_STRING
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: PORT
+        value: 8000

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
@@ -157,7 +158,7 @@ async def on_settings(msg: Message, state: FSMContext):
     lg  = row.get("lang","uz")
     tk  = row.get("truck","ALL")
     lang_label = "🇺🇿 O'zbek" if lg == "uz" else "🇷🇺 Русский"
-    await msg.answer(tx.txt("settings", lg, lang=lang_label, truck=tk), reply_markup=kb.back_kb(lg))
+    await msg.answer(tx.txt("settings", lg, lang_label=lang_label, truck=tk), reply_markup=kb.back_kb(lg))
     await msg.answer("👇", reply_markup=kb.lang_inline())
 
 @router.message(F.text.in_({"🚗 Avto turini o'zgartirish", "🚗 Изменить тип авто"}))
@@ -192,24 +193,81 @@ async def on_search(msg: Message, state: FSMContext):
     tk    = await truck_pref(uid)
 
     ads, total = await db.search_ads(query, tk, limit=PAGE)
-    fallback = False
+
     if not ads:
-        ads, total = await db.search_ads("", "ALL", limit=PAGE)
-        fallback = True
+        no_txt = (
+            f"🔍 <b>'{query}'</b> bo'yicha natija topilmadi.\n\n"
+            f"Boshqa so'z kiriting yoki qidiruv bo'limiga qayting."
+            if lg == "uz" else
+            f"🔍 По запросу <b>'{query}'</b> ничего не найдено.\n\n"
+            f"Попробуйте другое слово или вернитесь в поиск."
+        )
+        await msg.answer(no_txt, reply_markup=kb.search_kb(lg))
+        return
 
-    if fallback:
-        await msg.answer(tx.txt("no_results", lg))
-    else:
-        today = max(1, total // 3)
-        await msg.answer(tx.txt("results_header", lg, count=total, today=today))
-
-    await state.update_data(query=query, offset=PAGE, total=total)
+    from datetime import datetime, timezone
+    today_count = sum(
+        1 for a in ads
+        if a.get("created", "")[:10] == datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    )
+    await msg.answer(tx.txt("results_header", lg, count=total, today=today_count))
+    await state.update_data(query=query, truck=tk, offset=PAGE, total=total)
     await _send_cards(msg, ads, 1, lg)
+
+    if total > PAGE:
+        await msg.answer(
+            f"{'Ko\'proq bor' if lg=='uz' else 'Есть ещё'}: {total} {'ta' if lg=='uz' else 'шт.'}",
+            reply_markup=kb.load_more_inline(query, PAGE, total, lg)
+        )
 
 async def _send_cards(msg: Message, ads: list, start_n: int, lg: str):
     for i, ad in enumerate(ads):
-        text = tx.format_ad_card(ad, start_n + i, lg)
-        await msg.answer(text, reply_markup=kb.ad_inline(ad["id"], lg))
+        try:
+            text = tx.format_ad_card(ad, start_n + i, lg)
+            await msg.answer(text, reply_markup=kb.ad_inline(ad["id"], lg))
+        except Exception as e:
+            logger.debug(f"Card send error (ad {ad.get('id')}): {e}")
+
+
+@router.callback_query(F.data.startswith("more:"))
+async def cb_load_more(cb: CallbackQuery, state: FSMContext):
+    await cb.answer()
+    uid = cb.from_user.id
+    lg  = await lang(uid)
+
+    parts  = cb.data.split(":", 2)
+    query  = parts[1] if len(parts) > 1 else ""
+    offset = int(parts[2]) if len(parts) > 2 else PAGE
+
+    data  = await state.get_data()
+    tk    = data.get("truck", "ALL")
+
+    ads, total = await db.search_ads(query, tk, limit=PAGE, offset=offset)
+
+    # Eski "Ko'proq" tugmasini o'chirib tashla
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+
+    if not ads:
+        await cb.message.bot.send_message(
+            cb.message.chat.id, tx.txt("no_more", lg)
+        )
+        return
+
+    start_n = offset + 1
+    await _send_cards(cb.message, ads, start_n, lg)
+    await state.update_data(offset=offset + PAGE)
+
+    new_offset = offset + PAGE
+    if new_offset < total:
+        await cb.message.answer(
+            f"{'Ko\'proq bor' if lg=='uz' else 'Есть ещё'}: {total - new_offset} {'ta' if lg=='uz' else 'шт.'}",
+            reply_markup=kb.load_more_inline(query, new_offset, total, lg)
+        )
+    else:
+        await cb.message.answer(tx.txt("no_more", lg))
 
 # ─── POST AD FSM ────────────────────────────────────────
 @router.message(PostAd.from_loc, ~F.text.in_(BACK_TEXTS | CANCEL_TEXTS))
@@ -297,31 +355,44 @@ async def cb_country(cb: CallbackQuery):
     await cb.answer()
     uid     = cb.from_user.id
     lg      = await lang(uid)
-    country = cb.data.split(":",1)[1]
-    tk      = await truck_pref(uid)
-    ads, total = await db.search_ads(country, tk, limit=PAGE)
-    if not ads:
-        ads, total = await db.search_ads("", "ALL", limit=PAGE)
-    today = max(1, total // 3)
-    await cb.message.answer(tx.txt("results_header", lg, count=total, today=today))
-    await _send_cards(cb.message, ads, 1, lg)
-    await cb.message.answer("🔍", reply_markup=kb.result_kb(lg))
+    country = cb.data.split(":", 1)[1]
+    # Shaharlar ro'yxatini ko'rsat
+    city_kb = kb.cities_inline(country)
+    await cb.message.edit_text(
+        f"🏙 <b>{country}</b> — shahar tanlang:",
+        reply_markup=city_kb
+    )
 
 @router.callback_query(F.data.startswith("dir:"))
-async def cb_dir(cb: CallbackQuery):
+async def cb_dir(cb: CallbackQuery, state: FSMContext):
     await cb.answer()
     uid = cb.from_user.id
     lg  = await lang(uid)
     tk  = await truck_pref(uid)
-    direction = cb.data.split(":",1)[1]
-    query = direction.replace("→"," ")
+    direction = cb.data.split(":", 1)[1]
+    query = direction.replace("→", " ")
     ads, total = await db.search_ads(query, tk, limit=PAGE)
     if not ads:
-        ads, total = await db.search_ads("", "ALL", limit=PAGE)
-    today = max(1, total // 3)
-    await cb.message.answer(tx.txt("results_header", lg, count=total, today=today))
+        no_txt = (
+            f"🔍 <b>'{direction}'</b> bo'yicha natija topilmadi."
+            if lg == "uz" else
+            f"🔍 По направлению <b>'{direction}'</b> ничего не найдено."
+        )
+        await cb.message.answer(no_txt)
+        return
+    from datetime import datetime, timezone
+    today_count = sum(
+        1 for a in ads
+        if a.get("created", "")[:10] == datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    )
+    await cb.message.answer(tx.txt("results_header", lg, count=total, today=today_count))
+    await state.update_data(query=query, truck=tk, offset=PAGE, total=total)
     await _send_cards(cb.message, ads, 1, lg)
-    await cb.message.answer("🔍", reply_markup=kb.result_kb(lg))
+    if total > PAGE:
+        await cb.message.answer(
+            f"{'Ko\'proq bor' if lg=='uz' else 'Есть ещё'}: {total} ta",
+            reply_markup=kb.load_more_inline(query, PAGE, total, lg)
+        )
 
 @router.callback_query(F.data.startswith("detail:"))
 async def cb_detail(cb: CallbackQuery):
@@ -362,8 +433,13 @@ async def cb_detail(cb: CallbackQuery):
     else:
         text = tx.format_ad_detail(ad, lg)
 
-    await cb.message.answer(text,
-        reply_markup=kb.detail_inline(ad_id, phone, ad.get("link", ""), lg))
+    # O'sha kartochkani edit qilish (yangi xabar yubormasdan)
+    try:
+        await cb.message.edit_text(text,
+            reply_markup=kb.detail_inline(ad_id, phone, ad.get("link", ""), lg))
+    except Exception:
+        await cb.message.answer(text,
+            reply_markup=kb.detail_inline(ad_id, phone, ad.get("link", ""), lg))
 
 @router.callback_query(F.data.startswith("phone:"))
 async def cb_phone(cb: CallbackQuery):
